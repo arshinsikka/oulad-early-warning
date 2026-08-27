@@ -1,0 +1,256 @@
+Stage 2 Cohort Report
+Database: /Users/arshinsikka/oulad-early-warning/data/oulad.duckdb
+
+0a. Type normalisation
+======================
+
+Rows touched by each cast/normalisation (against Stage 1 raw tables):
+  student_registration.date_registration: '?' -> NULL: 45
+  student_registration.date_unregistration: '?' -> NULL: 22521
+  student_assessment.score: '?' -> NULL: 173
+  assessments.date: '?' -> NULL: 11
+  student_info.imd_band: '?' -> NULL: 1111
+  student_info.imd_band: '10-20' -> '10-20%': 3516
+
+Views created: v_student_registration, v_student_assessment, v_assessments, v_student_info. Stage 1 tables left untouched.
+
+
+0b. student_info key uniqueness
+===============================
+
+total rows: 32593
+distinct (code_module, code_presentation, id_student): 32593
+Key is unique.
+
+
+0c. Diagnostic: final_result x date_unregistration NULL (pre-exclusion)
+=======================================================================
+
+Cross-tabulation over the full joined population (v_student_registration x v_student_info), before E1/E2/E3.
+
+final_result   date_unregistration      count
+Distinction    NULL                      3024
+Fail           NOT NULL                     9
+Fail           NULL                      7043
+Pass           NULL                     12361
+Withdrawn      NOT NULL                 10063
+Withdrawn      NULL                        93
+
+final_result = 'Withdrawn' but NULL date_unregistration: 93
+non-NULL date_unregistration but final_result != 'Withdrawn': 9
+
+Reported only. Not resolved, not corrected.
+
+
+1. Exclusion waterfall (E3, E2, E1 in order), per cutoff
+========================================================
+
+--- D = 14 ---
+presentation     start     -E3     -E2     -E1  remaining
+2013B             4684       8       6     350       4320
+2013J             8845      10      10    1070       7755
+2014B             7804      18      12    1118       6656
+2014J            11260       9      30    1889       9332
+TOTAL            32593      45      58    4427      28063
+
+--- D = 28 ---
+presentation     start     -E3     -E2     -E1  remaining
+2013B             4684       8       4     549       4123
+2013J             8845      10       3    1149       7683
+2014B             7804      18       4    1271       6511
+2014J            11260       9       5    2033       9213
+TOTAL            32593      45      16    5002      27530
+
+--- D = 56 ---
+presentation     start     -E3     -E2     -E1  remaining
+2013B             4684       8       3     712       3961
+2013J             8845      10       1    1370       7464
+2014B             7804      18       3    1570       6213
+2014J            11260       9       2    2371       8878
+TOTAL            32593      45       9    6023      26516
+
+
+2. Base rate (mean not_completed)
+=================================
+
+--- D = 14, by presentation / split ---
+presentation  split            n   base_rate
+2013B         train         4320      0.5157
+2013J         train         7755      0.4237
+2014B         validate      6656      0.4961
+2014J         test          9332      0.4165
+
+--- D = 14, by split (aggregated) ---
+split            n   base_rate
+test          9332      0.4165
+train        12075      0.4566
+validate      6656      0.4961
+
+--- D = 14, by module-presentation ---
+module  presentation         n   base_rate
+AAA     2013J              370      0.2486
+AAA     2014J              350      0.2771
+BBB     2013B             1606      0.5006
+BBB     2013J             1852      0.4222
+BBB     2014B             1289      0.4375
+BBB     2014J             1791      0.3618
+CCC     2014B             1592      0.5835
+CCC     2014J             2078      0.5130
+DDD     2013B             1195      0.5741
+DDD     2013J             1675      0.5069
+DDD     2014B             1049      0.5443
+DDD     2014J             1481      0.4652
+EEE     2013J              933      0.3483
+EEE     2014B              614      0.4186
+EEE     2014J             1027      0.3340
+FFF     2013B             1519      0.4858
+FFF     2013J             1998      0.4520
+FFF     2014B             1310      0.5015
+FFF     2014J             1886      0.4077
+GGG     2013J              927      0.3614
+GGG     2014B              802      0.4040
+GGG     2014J              719      0.3825
+
+--- D = 28, by presentation / split ---
+presentation  split            n   base_rate
+2013B         train         4123      0.4924
+2013J         train         7683      0.4178
+2014B         validate      6511      0.4844
+2014J         test          9213      0.4079
+
+--- D = 28, by split (aggregated) ---
+split            n   base_rate
+test          9213      0.4079
+train        11806      0.4438
+validate      6511      0.4844
+
+--- D = 28, by module-presentation ---
+module  presentation         n   base_rate
+AAA     2013J              369      0.2466
+AAA     2014J              348      0.2730
+BBB     2013B             1529      0.4755
+BBB     2013J             1834      0.4160
+BBB     2014B             1280      0.4320
+BBB     2014J             1786      0.3555
+CCC     2014B             1500      0.5580
+CCC     2014J             2020      0.4980
+DDD     2013B             1141      0.5539
+DDD     2013J             1647      0.4973
+DDD     2014B             1028      0.5350
+DDD     2014J             1463      0.4586
+EEE     2013J              926      0.3423
+EEE     2014B              605      0.4099
+EEE     2014J             1020      0.3294
+FFF     2013B             1453      0.4618
+FFF     2013J             1983      0.4478
+FFF     2014B             1301      0.4973
+FFF     2014J             1859      0.3991
+GGG     2013J              924      0.3593
+GGG     2014B              797      0.4003
+GGG     2014J              717      0.3808
+
+--- D = 56, by presentation / split ---
+presentation  split            n   base_rate
+2013B         train         3961      0.4713
+2013J         train         7464      0.4006
+2014B         validate      6213      0.4597
+2014J         test          8878      0.3854
+
+--- D = 56, by split (aggregated) ---
+split            n   base_rate
+test          8878      0.3854
+train        11425      0.4251
+validate      6213      0.4597
+
+--- D = 56, by module-presentation ---
+module  presentation         n   base_rate
+AAA     2013J              365      0.2384
+AAA     2014J              342      0.2602
+BBB     2013B             1470      0.4544
+BBB     2013J             1785      0.3994
+BBB     2014B             1247      0.4170
+BBB     2014J             1750      0.3417
+CCC     2014B             1362      0.5132
+CCC     2014J             1879      0.4604
+DDD     2013B             1083      0.5291
+DDD     2013J             1574      0.4740
+DDD     2014B              971      0.5077
+DDD     2014J             1418      0.4415
+EEE     2013J              905      0.3271
+EEE     2014B              586      0.3908
+EEE     2014J              997      0.3139
+FFF     2013B             1408      0.4446
+FFF     2013J             1916      0.4285
+FFF     2014B             1257      0.4797
+FFF     2014J             1794      0.3774
+GGG     2013J              919      0.3558
+GGG     2014B              790      0.3949
+GGG     2014J              698      0.3639
+
+
+3. D3: share of rows removed by E1, per presentation, per cutoff
+================================================================
+
+presentation  D=14        D=28        D=56        
+2013B         0.0749      0.1175      0.1524      
+2013J         0.1212      0.1301      0.1551      
+2014B         0.1438      0.1633      0.2017      
+2014J         0.1683      0.1808      0.2108      
+
+Share = (rows entering E1 minus rows surviving E1) / rows entering E1, i.e. share of the E2-surviving population removed by E1.
+
+
+4. A2: student overlap, 2014J test vs 2013B/2013J train, at D=28
+================================================================
+
+distinct id_student in 2014J test split (cohort_d28): 8863
+of those, also appearing in 2013B or 2013J train split: 765
+share of test split: 0.0863
+
+
+5. Zero-activity count at D=28 (count only, no feature built)
+=============================================================
+
+cohort_d28 rows: 27530
+rows with no student_vle activity (date < 28): 917
+share: 0.0333
+base rate (not_completed) among zero-activity rows: 0.8244
+base rate (not_completed) among the rest: 0.4282
+
+
+6. A1: banked (is_banked = 1) student_assessment rows
+=====================================================
+
+is_banked = 1 rows: 1909
+distinct students affected: 523
+
+
+7. Arm 2 readiness: earliest TMA per module-presentation
+========================================================
+
+module  presentation   earliest_TMA_date   n_TMA
+AAA     2013J                         19       5
+AAA     2014J                         19       5
+BBB     2013B                         19       6
+BBB     2013J                         19       6
+BBB     2014B                         12       6
+BBB     2014J                         19       5
+CCC     2014B                         32       4
+CCC     2014J                         32       4
+DDD     2013B                         25       6
+DDD     2013J                         25       6
+DDD     2014B                         25       6
+DDD     2014J                         20       6
+EEE     2013J                         33       4
+EEE     2014B                         33       4
+EEE     2014J                         33       4
+FFF     2013B                         19       5
+FFF     2013J                         19       5
+FFF     2014B                         24       5
+FFF     2014J                         24       5
+GGG     2013J                         61       3
+GGG     2014B                         61       3
+GGG     2014J                         61       3
+
+Every module-presentation in courses has at least one TMA.
+
