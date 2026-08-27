@@ -1,0 +1,200 @@
+Stage 1 Validation Report
+Database: /Users/arshinsikka/oulad-early-warning/data/oulad.duckdb
+
+1. Table shapes
+===============
+
+student_info
+  rows: 32593
+  columns: 12
+  column names: ['code_module', 'code_presentation', 'id_student', 'gender', 'region', 'highest_education', 'imd_band', 'age_band', 'num_of_prev_attempts', 'studied_credits', 'disability', 'final_result']
+
+student_registration
+  rows: 32593
+  columns: 5
+  column names: ['code_module', 'code_presentation', 'id_student', 'date_registration', 'date_unregistration']
+
+student_assessment
+  rows: 173912
+  columns: 5
+  column names: ['id_assessment', 'id_student', 'date_submitted', 'is_banked', 'score']
+
+assessments
+  rows: 206
+  columns: 6
+  column names: ['code_module', 'code_presentation', 'id_assessment', 'assessment_type', 'date', 'weight']
+
+courses
+  rows: 22
+  columns: 3
+  column names: ['code_module', 'code_presentation', 'module_presentation_length']
+
+vle
+  rows: 6364
+  columns: 6
+  column names: ['id_site', 'code_module', 'code_presentation', 'activity_type', 'week_from', 'week_to']
+
+student_vle
+  rows: 10655280
+  columns: 6
+  column names: ['code_module', 'code_presentation', 'id_student', 'id_site', 'date', 'sum_click']
+
+
+2. courses: module x presentation grid
+======================================
+
+distinct code_module values (7): ['AAA', 'BBB', 'CCC', 'DDD', 'EEE', 'FFF', 'GGG']
+distinct code_presentation values (4): ['2013B', '2013J', '2014B', '2014J']
+total module-presentation combinations present: 22
+
+module    2013B  2013J  2014B  2014J  
+AAA       .      X      .      X      
+BBB       X      X      X      X      
+CCC       .      .      X      X      
+DDD       X      X      X      X      
+EEE       .      X      X      X      
+FFF       X      X      X      X      
+GGG       .      X      X      X      
+
+
+3. student_info distributions
+=============================
+
+final_result:
+  'Pass': 12361
+  'Withdrawn': 10156
+  'Fail': 7052
+  'Distinction': 3024
+
+gender:
+  'M': 17875
+  'F': 14718
+
+region:
+  'Scotland': 3446
+  'East Anglian Region': 3340
+  'London Region': 3216
+  'South Region': 3092
+  'North Western Region': 2906
+  'West Midlands Region': 2582
+  'South West Region': 2436
+  'East Midlands Region': 2365
+  'South East Region': 2111
+  'Wales': 2086
+  'Yorkshire Region': 2006
+  'North Region': 1823
+  'Ireland': 1184
+
+highest_education:
+  'A Level or Equivalent': 14045
+  'Lower Than A Level': 13158
+  'HE Qualification': 4730
+  'No Formal quals': 347
+  'Post Graduate Qualification': 313
+
+imd_band:
+  '20-30%': 3654
+  '30-40%': 3539
+  '10-20': 3516
+  '0-10%': 3311
+  '40-50%': 3256
+  '50-60%': 3124
+  '60-70%': 2905
+  '70-80%': 2879
+  '80-90%': 2762
+  '90-100%': 2536
+  '?': 1111
+
+age_band:
+  '0-35': 22944
+  '35-55': 9433
+  '55<=': 216
+
+disability:
+  'N': 29429
+  'Y': 3164
+
+distinct id_student: 28785
+total rows: 32593
+rows per student (rows / distinct students): 1.1323
+
+
+4. student_registration
+=======================
+
+rows: 32593
+date_registration and date_unregistration source type: VARCHAR
+null date_registration (true SQL NULL): 0
+non-numeric date_registration placeholder (e.g. '?'): 45
+null date_unregistration (true SQL NULL): 0
+non-numeric date_unregistration placeholder (e.g. '?'): 22521
+date ranges below computed via TRY_CAST(... AS DOUBLE), which treats both SQL NULL and non-numeric placeholders as missing:
+date_registration range: [-322.0, 167.0]
+date_unregistration range: [-365.0, 444.0]
+
+
+5. student_assessment and assessments
+=====================================
+
+student_assessment rows: 173912
+student_assessment score column source type: VARCHAR
+student_assessment null score (true SQL NULL): 0
+student_assessment non-numeric score placeholder (e.g. '?'), not SQL NULL but not parseable as a number: 173
+score min/max/mean/median below computed via TRY_CAST(score AS DOUBLE), which treats both of the above as missing:
+score min=0.0, max=100.0, mean=75.7996, median=80.0
+
+assessments.assessment_type distinct values and counts:
+  'TMA': 106
+  'CMA': 76
+  'Exam': 24
+
+assessments.date range (via TRY_CAST(date AS DOUBLE)): [12.0, 261.0]
+assessments.date null count (true SQL NULL): 0
+assessments.date non-numeric placeholder count (e.g. '?'): 11
+
+
+6. student_vle
+==============
+
+rows: 10655280
+date range: [-25, 269]
+rows with date < 0: 688988
+distinct id_student: 26074
+distinct id_site: 6268
+
+
+7. vle
+======
+
+rows: 6364
+distinct activity_type values and counts:
+  'resource': 2660
+  'subpage': 1055
+  'oucontent': 996
+  'url': 886
+  'forumng': 194
+  'quiz': 127
+  'page': 102
+  'oucollaborate': 82
+  'questionnaire': 61
+  'ouwiki': 49
+  'dataplus': 28
+  'externalquiz': 26
+  'homepage': 22
+  'ouelluminate': 21
+  'glossary': 21
+  'dualpane': 20
+  'repeatactivity': 5
+  'htmlactivity': 4
+  'sharedsubpage': 3
+  'folder': 2
+
+
+8. Referential integrity
+========================
+
+student_vle.id_student not found in student_info for the same module-presentation: 0
+student_assessment.id_student not found in student_info: 0
+student_assessment.id_assessment not found in assessments: 0
+student_vle.id_site not found in vle: 0
+
