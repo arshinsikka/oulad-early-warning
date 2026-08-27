@@ -551,3 +551,75 @@ Stage 6   Drift and explainability
 Stage 7   Arm 2, RDD and power analysis
 Stage 8   Serving endpoint, write-up
 ```
+
+
+---
+
+## Amendments
+
+Amendments are recorded after the root commit, with the original text above left
+unchanged. Each states what changed and why. A1 to A3 were made after Stage 1
+validation and before any Stage 2 code existed.
+
+### A1. Group E must exclude banked assessment scores
+
+**Amends:** Section 6, Group E.
+
+`student_assessment` contains an `is_banked` flag, not referenced in the
+original specification. A banked score is carried over from a previous
+presentation and is not evidence of engagement in the current one. Counting a
+banked score as a submission would credit a student with activity they did not
+perform in the window being measured.
+
+All five Group E features are computed over rows where `is_banked = 0`. The
+count of excluded rows and the number of students affected is reported.
+
+*Why it was missed:* the original specification was written from the published
+table schema without inspecting the column set. Found at Stage 1 validation.
+
+### A2. Students recur across the temporal split
+
+**Amends:** Section 4.
+
+Stage 1 found 32,593 rows over 28,785 distinct students, so a student can appear
+in more than one module-presentation, and therefore on both sides of the
+train/test split.
+
+This is not leakage in the technical sense. No information from the test
+presentation reaches the training data, and a returning student is a genuine
+deployment case already encoded by `num_of_prev_attempts`. Such students are
+therefore retained.
+
+However, per-student memorisation becomes a competing explanation for test
+performance. The count of distinct students appearing in both the 2014J test
+split and either training presentation is reported as a raw number and as a
+share of the test split. If that share is material, it is named in the write-up
+as an alternative explanation for measured performance, alongside a comparison
+of test performance on returning students versus first-time students.
+
+### A3. Engagement slope is computed daily, not weekly
+
+**Amends:** Section 6, Group C, second feature.
+
+The original specification computes the slope of weekly click counts by OLS
+over weeks 1 to D/7. At D = 14 this gives two points, which is a difference
+between two numbers rather than a regression, and it is not comparable to the
+same feature at D = 56 where it fits over eight points.
+
+The slope is instead fitted by OLS over daily click counts from day 0 to day
+D-1, with days of no activity entered as zero rather than omitted. This gives
+14, 28 and 56 points at the three cutoffs and makes the feature comparable
+across them.
+
+*Why it was missed:* a specification defect, found on reading the protocol back
+before implementation rather than from any data.
+
+### A4. Provenance
+
+**Amends:** Section 2.
+
+The dataset copy used is the UCI Machine Learning Repository mirror (dataset
+349, DOI 10.24432/C5KK69), not the Open University download page, which was
+non-functional at time of ingest. The originating publication remains Kuzilek,
+Hlosta and Zdrahal, *Scientific Data*, 2017. SHA-256 checksums of the seven CSVs
+as retrieved are recorded in `data/CHECKSUMS.txt`.
