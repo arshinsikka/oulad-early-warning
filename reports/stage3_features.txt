@@ -1,0 +1,192 @@
+aStage 3 Feature Report
+Database: /Users/arshinsikka/oulad-early-warning/data/oulad.duckdb
+
+1. Row count: features table vs cohort table
+============================================
+
+cutoff        features      cohort   match
+D=14             28063       28063    PASS
+D=28             27530       27530    PASS
+D=56             26516       26516    PASS
+
+
+2. Per-feature statistics at D=28
+=================================
+
+Numeric features:
+feature                        n_nonnull  n_null null_share         min         max        mean      median      stddev
+num_of_prev_attempts               27530       0     0.0000           0           6      0.1594      0.0000      0.4717
+studied_credits                    27530       0     0.0000          30         630     76.3373     60.0000     38.2475
+total_clicks                       27530       0     0.0000           0        7570    351.0692    221.0000    423.7365
+active_days                        27530       0     0.0000           0          53     14.3678     12.0000     10.1435
+clicks_last_7d                     27530       0     0.0000           0        2334     59.8021     25.0000     94.5285
+mean_clicks_per_active_day         26613     917     0.0333      1.0000    197.0000     21.2902     18.3333     13.9301
+days_registered_before_start       27530       0     0.0000         -28         311     66.4767     53.0000     47.5098
+days_since_last_activity           26613     917     0.0333           0          51      3.7073      2.0000      5.9277
+click_slope_daily                  27530       0     0.0000    -29.7947     15.9652     -0.0410     -0.0019      0.6569
+second_half_click_ratio            24952    2578     0.0936      0.0000    637.0000      3.0694      0.9661     12.5969
+longest_activity_gap               25821    1709     0.0621           1          45      9.0617      8.0000      5.2417
+distinct_activity_types            27530       0     0.0000           0          14      6.8805      7.0000      2.5143
+distinct_materials                 27530       0     0.0000           0         285     28.8339     23.0000     21.8764
+assessment_material_share          27530       0     0.0000      0.0000      1.0000      0.1143      0.0098      0.1926
+n_assessments_submitted            27530       0     0.0000           0           4      0.8360      1.0000      0.6391
+mean_score_submitted               19782    7748     0.2814      0.0000    100.0000     73.0499     78.0000     21.7372
+min_score_submitted                19782    7748     0.2814      0.0000    100.0000     72.2268     76.0000     21.7821
+mean_submission_lateness           19788    7742     0.2812   -242.0000     15.0000    -11.5139     -1.0000     34.7008
+n_due_not_submitted                27530       0     0.0000           0           2      0.1182      0.0000      0.3377
+clicks_percentile                  27530       0     0.0000      0.0000      1.0000      0.4981      0.4988      0.2908
+score_percentile                   19782    7748     0.2814      0.0000      1.0000      0.4571      0.4279      0.2859
+
+Categorical features (distinct value counts):
+gender:
+  'M': 15171
+  'F': 12359
+
+region:
+  'Scotland': 3161
+  'East Anglian Region': 2805
+  'South Region': 2623
+  'London Region': 2575
+  'North Western Region': 2333
+  'West Midlands Region': 2089
+  'South West Region': 2051
+  'East Midlands Region': 1923
+  'Wales': 1911
+  'South East Region': 1768
+  'Yorkshire Region': 1655
+  'North Region': 1531
+  'Ireland': 1105
+
+highest_education:
+  'A Level or Equivalent': 12037
+  'Lower Than A Level': 10798
+  'HE Qualification': 4147
+  'Post Graduate Qualification': 288
+  'No Formal quals': 260
+
+imd_band:
+  '30-40%': 2998
+  '20-30%': 2983
+  '10-20%': 2827
+  '40-50%': 2714
+  '50-60%': 2688
+  '0-10%': 2647
+  '70-80%': 2518
+  '60-70%': 2510
+  '80-90%': 2377
+  '90-100%': 2240
+  NULL: 1028
+
+age_band:
+  '0-35': 19174
+  '35-55': 8163
+  '55<=': 193
+
+disability:
+  'N': 24919
+  'Y': 2611
+
+module_presentation:
+  'CCC2014J': 2020
+  'FFF2013J': 1983
+  'FFF2014J': 1859
+  'BBB2013J': 1834
+  'BBB2014J': 1786
+  'DDD2013J': 1647
+  'BBB2013B': 1529
+  'CCC2014B': 1500
+  'DDD2014J': 1463
+  'FFF2013B': 1453
+  'FFF2014B': 1301
+  'BBB2014B': 1280
+  'DDD2013B': 1141
+  'DDD2014B': 1028
+  'EEE2014J': 1020
+  'EEE2013J': 926
+  'GGG2013J': 924
+  'GGG2014B': 797
+  'GGG2014J': 717
+  'EEE2014B': 605
+  'AAA2013J': 369
+  'AAA2014J': 348
+
+
+3. Null share per feature, all cutoffs
+======================================
+
+feature                       D=14        D=28        D=56        
+num_of_prev_attempts          0.0000      0.0000      0.0000      
+studied_credits               0.0000      0.0000      0.0000      
+total_clicks                  0.0000      0.0000      0.0000      
+active_days                   0.0000      0.0000      0.0000      
+clicks_last_7d                0.0000      0.0000      0.0000      
+mean_clicks_per_active_day    0.0601      0.0333      0.0224      
+days_registered_before_start  0.0000      0.0000      0.0000      
+days_since_last_activity      0.0601      0.0333      0.0224      
+click_slope_daily             0.0000      0.0000      0.0000      
+second_half_click_ratio       0.1885      0.0936      0.0431      
+longest_activity_gap          0.1191      0.0621      0.0402      
+distinct_activity_types       0.0000      0.0000      0.0000      
+distinct_materials            0.0000      0.0000      0.0000      
+assessment_material_share     0.0000      0.0000      0.0000      
+n_assessments_submitted       0.0000      0.0000      0.0000      
+mean_score_submitted          0.8939      0.2814      0.1429      
+min_score_submitted           0.8939      0.2814      0.1429      
+mean_submission_lateness      0.8938      0.2812      0.1427      
+n_due_not_submitted           0.0000      0.0000      0.0000      
+clicks_percentile             0.0000      0.0000      0.0000      
+score_percentile              0.8939      0.2814      0.1429      
+gender                        0.0000      0.0000      0.0000      
+region                        0.0000      0.0000      0.0000      
+highest_education             0.0000      0.0000      0.0000      
+imd_band                      0.0370      0.0373      0.0377      
+age_band                      0.0000      0.0000      0.0000      
+disability                    0.0000      0.0000      0.0000      
+module_presentation           0.0000      0.0000      0.0000      
+
+
+4. Leakage sentinel
+===================
+
+Independently re-derived from the raw source tables (not read back from the feature tables), restricted to cohort membership.
+
+cutoff       max(vle.date)     vle  max(sa.date_submitted)      sa
+D=14                    13    PASS                      13    PASS
+D=28                    27    PASS                      27    PASS
+D=56                    55    PASS                      55    PASS
+
+
+5. Correlation with not_completed, TRAIN split, D=28
+====================================================
+
+Pairwise deletion of NULLs in the feature (DuckDB corr() default).
+
+feature                             corr
+mean_score_submitted             -0.3353
+clicks_percentile                -0.3310
+min_score_submitted              -0.3271
+score_percentile                 -0.3248
+n_due_not_submitted               0.3192
+active_days                      -0.2749
+total_clicks                     -0.2127
+distinct_activity_types          -0.1923
+days_since_last_activity          0.1919
+distinct_materials               -0.1757
+clicks_last_7d                   -0.1738
+n_assessments_submitted          -0.1534
+longest_activity_gap              0.1503
+num_of_prev_attempts              0.1301
+mean_clicks_per_active_day       -0.1092
+studied_credits                   0.0938
+mean_submission_lateness          0.0917
+assessment_material_share        -0.0638
+second_half_click_ratio           0.0528
+days_registered_before_start     -0.0239
+click_slope_daily                 0.0039
+
+
+6. Sample export
+================
+
+20 rows sampled from features_d28 (seed 42), written to /Users/arshinsikka/oulad-early-warning/reports/stage3_sample_d28.csv
+

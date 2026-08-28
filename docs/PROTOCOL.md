@@ -623,3 +623,29 @@ The dataset copy used is the UCI Machine Learning Repository mirror (dataset
 non-functional at time of ingest. The originating publication remains Kuzilek,
 Hlosta and Zdrahal, *Scientific Data*, 2017. SHA-256 checksums of the seven CSVs
 as retrieved are recorded in `data/CHECKSUMS.txt`.
+
+### A5. The observation window has no lower bound
+
+**Amends:** Section 6, Groups B, C and D.
+
+Section 5 specifies the upper edge of the observation window (`date < D`) and
+never specifies a lower one. `student_vle` contains activity from day -25, so
+five features (`total_clicks`, `active_days`, `distinct_activity_types`,
+`distinct_materials`, `click_slope_daily`) include engagement occurring before
+the presentation began.
+
+This is retained rather than corrected. Pre-registration activity is known at
+the point of prediction, so it breaches no leakage rule, and early engagement
+with course materials is exactly the behaviour an early warning system should
+be reading. The window is therefore "everything known up to day D", not "the
+first D days".
+
+Consequence: `active_days` can exceed D. One traced student (FFF 2013J,
+id 606428) records 31 active days at D=28, of which 11 precede day 0.
+`click_slope_daily`, per Amendment A3, is still fitted over days 0 to D-1 only,
+so the slope and the volume features cover different windows. That asymmetry is
+noted and not resolved.
+
+*Why it was missed:* the specification was written assuming activity begins at
+day 0. Found at Verification Stop 2 by manually tracing a sampled student
+against the raw table, not by any automated check.
