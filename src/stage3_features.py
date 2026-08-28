@@ -250,6 +250,10 @@ def build_features_sql(D: int) -> str:
     -- Group F: cohort-relative, computed only over this cutoff's cohort (L6).
     -- score_percentile is ranked only among students with a defined mean
     -- score; students without one get NULL, not a diluted percentile.
+    -- Per Amendment A6, the third Group F feature is code_module (already a
+    -- key column), not module_presentation: module_presentation is
+    -- degenerate under the Section 4 split (no value recurs across train,
+    -- validate and test), so it is not produced as a separate column here.
     score_percentile_agg AS (
         SELECT
             code_module, code_presentation, id_student,
@@ -283,8 +287,7 @@ def build_features_sql(D: int) -> str:
             PARTITION BY a.code_module, a.code_presentation
             ORDER BY a.total_clicks
         ) AS clicks_percentile,
-        sp.score_percentile,
-        (a.code_module || a.code_presentation) AS module_presentation
+        sp.score_percentile
 
     FROM assembled a
     LEFT JOIN score_percentile_agg sp

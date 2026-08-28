@@ -649,3 +649,33 @@ noted and not resolved.
 *Why it was missed:* the specification was written assuming activity begins at
 day 0. Found at Verification Stop 2 by manually tracing a sampled student
 against the raw table, not by any automated check.
+
+### A6. module_presentation is replaced by code_module
+
+**Amends:** Section 6, Group F, third feature.
+
+Group F specifies `module_presentation` (the concatenation of `code_module` and
+`code_presentation`) as a categorical. Under the temporal split in Section 4,
+this feature is degenerate: training presentations are 2013B and 2013J,
+validation is 2014B and test is 2014J, so no value observed in training ever
+recurs at validation or test. Every learned dummy is zero at scoring time.
+
+The first Stage 4 run made the consequence visible. In the B3 logistic model at
+D=28, the two largest coefficients by absolute value were on
+`module_presentation` dummies (0.79 and -0.73), both exceeding the largest
+behavioural coefficient. Those coefficients contribute nothing to any
+prediction the model is scored on, while shifting its effective intercept and
+therefore its calibration, which Section 8 designates a headline metric.
+
+The feature is replaced by `code_module` (7 values: AAA to GGG), which appears
+in both the training and test presentations and preserves the original intent
+of controlling for between-module differences in difficulty and activity
+volume. `code_presentation` is not used as a feature in any form, being
+perfectly collinear with the split.
+
+Stage 4 is re-run in full under this amendment before the holdout is opened.
+The original run is retained in git history.
+
+*Why it was missed:* the feature was specified from the data schema without
+checking its behaviour against the temporal split. Found by reading the fitted
+coefficients in the Stage 4 report, not by any automated check.

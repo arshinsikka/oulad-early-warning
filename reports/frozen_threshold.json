@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-28T06:18:08.986532+00:00",
-  "git_commit": "1cbbf3355de3bca2a7c7b305957c32af30c71b19",
+  "generated_at": "2026-08-28T06:26:47.096594+00:00",
+  "git_commit": "be2e328041378840314fde74995d099670aa6951",
   "cost_ratio": 10,
   "cutoffs": {
     "14": {
@@ -24,20 +24,20 @@
         }
       },
       "B3": {
-        "threshold": 0.07,
-        "validate_expected_cost": 0.49939903846153844,
+        "threshold": 0.09,
+        "validate_expected_cost": 0.49984975961538464,
         "hyperparameters": {
           "C": 0.01
         }
       },
       "M1": {
         "threshold": 0.14,
-        "validate_expected_cost": 0.5004507211538461,
+        "validate_expected_cost": 0.5,
         "hyperparameters": {
-          "num_leaves": 63,
-          "learning_rate": 0.05,
-          "min_child_samples": 100,
-          "n_estimators": 52
+          "num_leaves": 15,
+          "learning_rate": 0.1,
+          "min_child_samples": 50,
+          "n_estimators": 40
         }
       }
     },
@@ -62,20 +62,20 @@
         }
       },
       "B3": {
-        "threshold": 0.06,
-        "validate_expected_cost": 0.5057594839502381,
+        "threshold": 0.07,
+        "validate_expected_cost": 0.5095991399170634,
         "hyperparameters": {
           "C": 0.1
         }
       },
       "M1": {
-        "threshold": 0.15,
-        "validate_expected_cost": 0.505452311472892,
+        "threshold": 0.14,
+        "validate_expected_cost": 0.504684380279527,
         "hyperparameters": {
-          "num_leaves": 31,
-          "learning_rate": 0.01,
-          "min_child_samples": 50,
-          "n_estimators": 398
+          "num_leaves": 15,
+          "learning_rate": 0.05,
+          "min_child_samples": 100,
+          "n_estimators": 107
         }
       }
     },
@@ -100,20 +100,20 @@
         }
       },
       "B3": {
-        "threshold": 0.07,
-        "validate_expected_cost": 0.521970062771608,
+        "threshold": 0.1,
+        "validate_expected_cost": 0.529534846290037,
         "hyperparameters": {
-          "C": 0.01
+          "C": 0.001
         }
       },
       "M1": {
-        "threshold": 0.12,
-        "validate_expected_cost": 0.51295670368582,
+        "threshold": 0.13,
+        "validate_expected_cost": 0.5107033639143731,
         "hyperparameters": {
           "num_leaves": 31,
-          "learning_rate": 0.05,
-          "min_child_samples": 20,
-          "n_estimators": 125
+          "learning_rate": 0.01,
+          "min_child_samples": 50,
+          "n_estimators": 590
         }
       }
     }

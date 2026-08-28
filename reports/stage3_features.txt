@@ -1,4 +1,4 @@
-aStage 3 Feature Report
+Stage 3 Feature Report
 Database: /Users/arshinsikka/oulad-early-warning/data/oulad.duckdb
 
 1. Row count: features table vs cohort table
@@ -86,29 +86,14 @@ disability:
   'N': 24919
   'Y': 2611
 
-module_presentation:
-  'CCC2014J': 2020
-  'FFF2013J': 1983
-  'FFF2014J': 1859
-  'BBB2013J': 1834
-  'BBB2014J': 1786
-  'DDD2013J': 1647
-  'BBB2013B': 1529
-  'CCC2014B': 1500
-  'DDD2014J': 1463
-  'FFF2013B': 1453
-  'FFF2014B': 1301
-  'BBB2014B': 1280
-  'DDD2013B': 1141
-  'DDD2014B': 1028
-  'EEE2014J': 1020
-  'EEE2013J': 926
-  'GGG2013J': 924
-  'GGG2014B': 797
-  'GGG2014J': 717
-  'EEE2014B': 605
-  'AAA2013J': 369
-  'AAA2014J': 348
+code_module:
+  'FFF': 6596
+  'BBB': 6429
+  'DDD': 5279
+  'CCC': 3520
+  'EEE': 2551
+  'GGG': 2438
+  'AAA': 717
 
 
 3. Null share per feature, all cutoffs
@@ -142,7 +127,7 @@ highest_education             0.0000      0.0000      0.0000
 imd_band                      0.0370      0.0373      0.0377      
 age_band                      0.0000      0.0000      0.0000      
 disability                    0.0000      0.0000      0.0000      
-module_presentation           0.0000      0.0000      0.0000      
+code_module                   0.0000      0.0000      0.0000      
 
 
 4. Leakage sentinel

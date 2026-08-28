@@ -25,8 +25,8 @@ from stage3_report import CATEGORICAL_FEATURES, NUMERIC_FEATURES
 from stage4_guard import load_split
 from stage4_models import (
     B0BaseRate, B3_C_GRID, HEADLINE_RATIO, LGBM_GRID,
-    cost_ratio_curve, expected_cost, fit_lightgbm, fit_logistic,
-    ranking_metrics, sweep_threshold,
+    confusion_at_threshold, cost_ratio_curve, expected_cost, fit_lightgbm,
+    fit_logistic, ranking_metrics, sweep_threshold,
 )
 from stage4_preprocess import FeaturePreprocessor, NumericPreprocessor
 
@@ -131,6 +131,11 @@ def summarise_model(name: str, fit_result: dict, y_val: np.ndarray) -> dict:
     cost_minus = expected_cost(y_val, prob, t_minus, HEADLINE_RATIO)
     cost_plus = expected_cost(y_val, prob, t_plus, HEADLINE_RATIO)
 
+    # Confusion counts at the frozen threshold, cached so the report can
+    # recompute cost at any ratio (e.g. the trivial-policy comparison)
+    # without re-touching the fitted model or its probabilities.
+    fn, fp, n = confusion_at_threshold(y_val, prob, best_t)
+
     summary = {
         "threshold": best_t,
         "expected_cost": best_c,
@@ -138,6 +143,9 @@ def summarise_model(name: str, fit_result: dict, y_val: np.ndarray) -> dict:
         "cost_plus_005": cost_plus,
         "metrics": metrics,
         "ratio_curve": ratio_curve,
+        "fn_at_threshold": fn,
+        "fp_at_threshold": fp,
+        "n_validate": n,
     }
     if name == "B3":
         summary["C"] = fit_result["C"]

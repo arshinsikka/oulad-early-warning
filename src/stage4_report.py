@@ -52,16 +52,30 @@ def main() -> None:
     # --- 2. Metrics table, every model, every cutoff, on validate ---
     out.append(section("2. Validate metrics, every model, every cutoff"))
     out.append(
-        f"{'cutoff':<8}{'model':<6}{'AUC-PR':>9}{'AUC-ROC':>9}{'Brier':>9}"
-        f"{'cost@thr':>10}{'recall@5%':>11}{'recall@10%':>12}{'recall@20%':>12}"
+        "Recall ceilings (recall@k cannot exceed k / base_rate, capped at 1.0) "
+        "are printed alongside each recall figure since they depend only on "
+        "the cutoff's validate base rate, not on the model."
+    )
+    out.append("")
+    out.append(
+        f"{'cutoff':<8}{'model':<6}{'AUC-PR':>9}{'AUC-ROC':>9}{'Brier':>9}{'cost@thr':>10}"
+        f"{'recall@5%':>11}{'ceil@5%':>9}"
+        f"{'recall@10%':>12}{'ceil@10%':>10}"
+        f"{'recall@20%':>12}{'ceil@20%':>10}"
     )
     for D in CUTOFFS:
+        base_rate = results[D]["validate_base_rate"]
+        ceil5 = min(1.0, 0.05 / base_rate) if base_rate > 0 else float("nan")
+        ceil10 = min(1.0, 0.10 / base_rate) if base_rate > 0 else float("nan")
+        ceil20 = min(1.0, 0.20 / base_rate) if base_rate > 0 else float("nan")
         for rung in RUNG_NAMES:
             m = results[D]["models"][rung]["metrics"]
             cost = results[D]["models"][rung]["expected_cost"]
             out.append(
-                f"D={D:<6}{rung:<6}{m['auc_pr']:>9.4f}{m['auc_roc']:>9.4f}{m['brier']:>9.4f}"
-                f"{cost:>10.4f}{m['recall_at_5pct']:>11.4f}{m['recall_at_10pct']:>12.4f}{m['recall_at_20pct']:>12.4f}"
+                f"D={D:<6}{rung:<6}{m['auc_pr']:>9.4f}{m['auc_roc']:>9.4f}{m['brier']:>9.4f}{cost:>10.4f}"
+                f"{m['recall_at_5pct']:>11.4f}{ceil5:>9.4f}"
+                f"{m['recall_at_10pct']:>12.4f}{ceil10:>10.4f}"
+                f"{m['recall_at_20pct']:>12.4f}{ceil20:>10.4f}"
             )
         out.append("")
 
@@ -157,6 +171,41 @@ def main() -> None:
         "predictive accuracy and cost is given up by acting earlier."
     )
     out.append("")
+
+    # --- 9. Trivial policy comparison ---
+    out.append(section("9. Trivial policy comparison: best model vs flag-everyone / flag-none"))
+    out.append(
+        "cost_flag_all = 1 - base_rate (ratio-independent: no false negatives possible). "
+        "cost_flag_none = ratio * base_rate. cost_model uses the FROZEN threshold "
+        "(chosen at 10:1) re-costed at each ratio, not re-optimised per ratio. "
+        "improvement_pct = (cost_flag_all - cost_model) / cost_flag_all * 100."
+    )
+    out.append("")
+    for D in CUTOFFS:
+        best = best_rung(results[D]["models"])
+        s = results[D]["models"][best]
+        base_rate = results[D]["validate_base_rate"]
+        fn = s["fn_at_threshold"]
+        fp = s["fp_at_threshold"]
+        n = s["n_validate"]
+        cost_flag_all = 1.0 - base_rate
+
+        out.append(f"--- D={D}, best model = {best} (frozen threshold = {s['threshold']:.2f}) ---")
+        out.append(
+            f"{'ratio':<8}{'cost_flag_all':>14}{'cost_flag_none':>16}{'cost_model':>12}"
+            f"{'improve_abs':>13}{'improve_pct':>13}"
+        )
+        for ratio in RATIO_GRID:
+            cost_flag_none = ratio * base_rate
+            cost_model = (ratio * fn + fp) / n
+            improve_abs = cost_flag_all - cost_model
+            improve_pct = (improve_abs / cost_flag_all * 100) if cost_flag_all != 0 else float("nan")
+            marker = "  <- headline (10:1)" if ratio == HEADLINE_RATIO else ""
+            out.append(
+                f"{ratio:<8}{cost_flag_all:>14.4f}{cost_flag_none:>16.4f}{cost_model:>12.4f}"
+                f"{improve_abs:>13.4f}{improve_pct:>12.2f}%{marker}"
+            )
+        out.append("")
 
     report_text = "\n".join(out)
     REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)

@@ -29,12 +29,17 @@ assert len(LGBM_GRID) == 27
 B3_C_GRID = [0.001, 0.01, 0.1, 1, 10]
 
 
-def expected_cost(y_true: np.ndarray, y_prob: np.ndarray, threshold: float, ratio: float) -> float:
+def confusion_at_threshold(y_true: np.ndarray, y_prob: np.ndarray, threshold: float):
     preds = (y_prob >= threshold).astype(int)
     y_true = np.asarray(y_true)
     fn = int(((y_true == 1) & (preds == 0)).sum())
     fp = int(((y_true == 0) & (preds == 1)).sum())
     n = len(y_true)
+    return fn, fp, n
+
+
+def expected_cost(y_true: np.ndarray, y_prob: np.ndarray, threshold: float, ratio: float) -> float:
+    fn, fp, n = confusion_at_threshold(y_true, y_prob, threshold)
     return (ratio * fn + fp) / n
 
 

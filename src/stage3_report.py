@@ -21,7 +21,7 @@ HEADLINE_CUTOFF = 28
 
 CATEGORICAL_FEATURES = [
     "gender", "region", "highest_education", "imd_band", "age_band",
-    "disability", "module_presentation",
+    "disability", "code_module",
 ]
 
 NUMERIC_FEATURES = [
