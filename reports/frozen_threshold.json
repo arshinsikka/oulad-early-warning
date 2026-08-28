@@ -1,0 +1,121 @@
+{
+  "generated_at": "2026-08-28T06:18:08.986532+00:00",
+  "git_commit": "1cbbf3355de3bca2a7c7b305957c32af30c71b19",
+  "cost_ratio": 10,
+  "cutoffs": {
+    "14": {
+      "B0": {
+        "threshold": 0.01,
+        "validate_expected_cost": 0.50390625,
+        "hyperparameters": {}
+      },
+      "B1": {
+        "threshold": 0.01,
+        "validate_expected_cost": 0.50390625,
+        "hyperparameters": {
+          "C": 1.0
+        }
+      },
+      "B2": {
+        "threshold": 0.01,
+        "validate_expected_cost": 0.50390625,
+        "hyperparameters": {
+          "C": 1.0
+        }
+      },
+      "B3": {
+        "threshold": 0.07,
+        "validate_expected_cost": 0.49939903846153844,
+        "hyperparameters": {
+          "C": 0.01
+        }
+      },
+      "M1": {
+        "threshold": 0.14,
+        "validate_expected_cost": 0.5004507211538461,
+        "hyperparameters": {
+          "num_leaves": 63,
+          "learning_rate": 0.05,
+          "min_child_samples": 100,
+          "n_estimators": 52
+        }
+      }
+    },
+    "28": {
+      "B0": {
+        "threshold": 0.01,
+        "validate_expected_cost": 0.515589003225311,
+        "hyperparameters": {}
+      },
+      "B1": {
+        "threshold": 0.01,
+        "validate_expected_cost": 0.515589003225311,
+        "hyperparameters": {
+          "C": 1.0
+        }
+      },
+      "B2": {
+        "threshold": 0.01,
+        "validate_expected_cost": 0.515589003225311,
+        "hyperparameters": {
+          "C": 1.0
+        }
+      },
+      "B3": {
+        "threshold": 0.06,
+        "validate_expected_cost": 0.5057594839502381,
+        "hyperparameters": {
+          "C": 0.1
+        }
+      },
+      "M1": {
+        "threshold": 0.15,
+        "validate_expected_cost": 0.505452311472892,
+        "hyperparameters": {
+          "num_leaves": 31,
+          "learning_rate": 0.01,
+          "min_child_samples": 50,
+          "n_estimators": 398
+        }
+      }
+    },
+    "56": {
+      "B0": {
+        "threshold": 0.01,
+        "validate_expected_cost": 0.540318686624819,
+        "hyperparameters": {}
+      },
+      "B1": {
+        "threshold": 0.01,
+        "validate_expected_cost": 0.540318686624819,
+        "hyperparameters": {
+          "C": 1.0
+        }
+      },
+      "B2": {
+        "threshold": 0.13,
+        "validate_expected_cost": 0.539835828102366,
+        "hyperparameters": {
+          "C": 1.0
+        }
+      },
+      "B3": {
+        "threshold": 0.07,
+        "validate_expected_cost": 0.521970062771608,
+        "hyperparameters": {
+          "C": 0.01
+        }
+      },
+      "M1": {
+        "threshold": 0.12,
+        "validate_expected_cost": 0.51295670368582,
+        "hyperparameters": {
+          "num_leaves": 31,
+          "learning_rate": 0.05,
+          "min_child_samples": 20,
+          "n_estimators": 125
+        }
+      }
+    }
+  }
+}
