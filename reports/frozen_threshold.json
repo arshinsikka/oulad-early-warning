@@ -1,6 +1,8 @@
 {
   "generated_at": "2026-08-28T06:26:47.096594+00:00",
-  "git_commit": "be2e328041378840314fde74995d099670aa6951",
+  "git_commit_at_generation": "be2e328041378840314fde74995d099670aa6951",
+  "git_tree_dirty": true,
+  "note": "git_commit_at_generation is the HEAD hash when this file was written, not the commit that contains it: that commit is necessarily later. The hash identifies the code state the thresholds were generated from; if git_tree_dirty is true, uncommitted changes were also part of that state.",
   "cost_ratio": 10,
   "cutoffs": {
     "14": {

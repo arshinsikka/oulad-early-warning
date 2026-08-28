@@ -53,6 +53,13 @@ def git_commit_hash() -> str:
     ).stdout.strip()
 
 
+def git_tree_dirty() -> bool:
+    result = subprocess.run(
+        ["git", "status", "--porcelain"], cwd=ROOT, capture_output=True, text=True, check=True
+    )
+    return bool(result.stdout.strip())
+
+
 def build_preprocessors(train_df: pd.DataFrame) -> dict:
     preproc_b1 = NumericPreprocessor(["days_since_last_activity"], add_indicators=False).fit(train_df)
     preproc_b2 = FeaturePreprocessor(GROUP_A_NUMERIC, GROUP_A_CATEGORICAL, add_indicators=True).fit(train_df)
@@ -201,8 +208,19 @@ def main() -> None:
     con = duckdb.connect(str(DB_PATH), read_only=True)
 
     all_results = {}
-    frozen = {"generated_at": datetime.now(timezone.utc).isoformat(),
-              "git_commit": git_commit_hash(), "cost_ratio": HEADLINE_RATIO, "cutoffs": {}}
+    frozen = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "git_commit_at_generation": git_commit_hash(),
+        "git_tree_dirty": git_tree_dirty(),
+        "note": (
+            "git_commit_at_generation is the HEAD hash when this file was written, "
+            "not the commit that contains it: that commit is necessarily later. "
+            "The hash identifies the code state the thresholds were generated from; "
+            "if git_tree_dirty is true, uncommitted changes were also part of that state."
+        ),
+        "cost_ratio": HEADLINE_RATIO,
+        "cutoffs": {},
+    }
 
     for D in CUTOFFS:
         table = f"features_d{D}"
