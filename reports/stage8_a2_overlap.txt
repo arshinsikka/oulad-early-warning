@@ -1,0 +1,69 @@
+Stage 8: Amendment A2, train/test student overlap on the holdout
+Discharges the reporting Amendment A2 committed to and Stage 5 did not produce. Nothing is refit and nothing is rescored: predictions are read from stage5_test_predictions.parquet and the threshold from frozen_threshold.json. No model artefact is loaded.
+frozen_threshold.json git_commit_at_generation: be2e328041378840314fde74995d099670aa6951
+
+1. What A2 commits to
+=====================
+
+Amendment A2, on Section 4: 'The count of distinct students appearing in both the 2014J test split and either training presentation is reported as a raw number and as a share of the test split. If that share is material, it is named in the write-up as an alternative explanation for measured performance, alongside a comparison of test performance on returning students versus first-time students.'
+
+A2 is explicit that this is not leakage: no information from the test presentation reaches the training data, and a returning student is a genuine deployment case already encoded by num_of_prev_attempts. What it opens is a competing explanation. If the model does better on students it has seen before, per-student memorisation is an alternative account of measured test performance, and the comparison below is what distinguishes the two.
+
+
+2. Overlap counts, 2014J test split at D=28
+===========================================
+
+  Test split: 9213 rows over 8863 distinct students.
+  A row is one student-module-presentation, so a student taking two modules in 2014J appears twice. Both counts are given.
+
+  definition of a returning student                                          rows   share  students   share
+  in a training presentation (2013B or 2013J), as rows the model was fit on    782  0.0849       765  0.0863
+  in the validation presentation (2014B), as rows the model was fit on        564  0.0612       552  0.0623
+  in train OR validate, i.e. seen anywhere by the scored model               1283  0.1393      1259  0.1421
+  in a 2013 presentation in student_info, before Section 3 exclusions         823  0.0893       806  0.0909
+
+The first row is the figure A2 asks for. The third is the one that matters for the competing explanation it raises: Section 4's refit rule fits the scored model on train + validation combined, so a student appearing in 2014B was also seen by the model that produced these predictions, even though 2014B is not a 'training presentation' in A2's wording. A2 was written at Stage 1, before that consequence of the refit rule was in view.
+
+Whether these shares are material is not decided here. A2 says 'if that share is material' and defines no threshold, and neither does any other part of the protocol. Consistent with the treatment of O3 to O6, the numbers are reported and no verdict is derived from them.
+
+
+3. Test performance, returning against first-time students
+==========================================================
+
+Model M1 is the cost-selected model at D=28; B3 is shown alongside it. Expected cost is at the frozen threshold and the pre-committed 10:1 ratio, applied unchanged to both subgroups.
+AUC-PR is not comparable across groups with different prevalence, since a random ranker scores the base rate. Each subgroup's base rate and the ratio of its AUC-PR to that base rate are printed alongside. Expected cost carries the same dependence: the flag-everyone cost for a subgroup is one minus its base rate, so that column is printed too and is the floor each subgroup's cost should be read against.
+
+--- returning = in a training presentation (2013B or 2013J), as rows the model was fit on  [A2 as written] ---
+  model M1, frozen threshold 0.14
+    subgroup            n  base_rate   AUC-PR   ratio    Brier     cost  flag_all     edge
+    returning         782     0.5793   0.7835    1.35   0.2133   0.4591    0.4207  -0.0384
+    first-time       8431     0.3920   0.6618    1.69   0.2105   0.5990    0.6080   0.0090
+
+  model B3, frozen threshold 0.07
+    subgroup            n  base_rate   AUC-PR   ratio    Brier     cost  flag_all     edge
+    returning         782     0.5793   0.7515    1.30   0.2116   0.4412    0.4207  -0.0205
+    first-time       8431     0.3920   0.5912    1.51   0.2156   0.6062    0.6080   0.0018
+
+
+--- returning = in train OR validate, i.e. seen anywhere by the scored model  [refit rule] ---
+  model M1, frozen threshold 0.14
+    subgroup            n  base_rate   AUC-PR   ratio    Brier     cost  flag_all     edge
+    returning        1283     0.5573   0.7942    1.43   0.2064   0.4692    0.4427  -0.0265
+    first-time       7930     0.3837   0.6455    1.68   0.2115   0.6062    0.6163   0.0101
+
+  model B3, frozen threshold 0.07
+    subgroup            n  base_rate   AUC-PR   ratio    Brier     cost  flag_all     edge
+    returning        1283     0.5573   0.7645    1.37   0.2029   0.4466    0.4427  -0.0039
+    first-time       7930     0.3837   0.5740    1.50   0.2172   0.6158    0.6163   0.0005
+
+
+Whole test split for reference, model M1: n = 9213, base rate 0.4079, AUC-PR 0.6794, ratio 1.67, Brier 0.2108, expected cost 0.5871 against a flag-everyone cost of 0.5921.
+
+'edge' is flag_all minus cost: how much the model's frozen policy saves against flagging every student in that subgroup. It is the comparison the primary metric supports at this base rate, since expected cost in levels moves with prevalence and the two subgroups have different prevalence.
+
+Read as evidence on the competing explanation A2 raises: if per-student memorisation were driving measured test performance, the returning subgroup would rank better than the first-time subgroup once the base-rate difference is accounted for. On these figures it does not.
+  Raw AUC-PR is higher for returning students (0.7835 against 0.6618 for M1), but so is their base rate (0.5793 against 0.3920). Measured against each subgroup's own base rate the ranking is WORSE for returning students: 1.35 against 1.69.
+  On expected cost, the frozen policy is worse than flagging everyone within the returning subgroup (edge -0.0384) and better within the first-time subgroup (edge +0.0090).
+  Both directions run against the memorisation account rather than for it, and the same pattern holds under the refit-inclusive definition and for B3. Reported as a measured direction, not converted into a verdict: A2 conditions its write-up clause on the share being 'material' and the protocol defines no threshold for that, here or anywhere else.
+  These are point comparisons. Stage 5's bootstrap was not re-run, because re-running it is not documentation, so no interval is attached to any figure above and none should be inferred.
+

@@ -108,25 +108,41 @@ Validate-frozen thresholds against the test-optimal counterfactual:
 | cutoff | frozen | test-optimal | gap |
 |--------|--------|--------------|-----|
 | D=14   | 0.09   | 0.09         | 0.00 |
-| D=28   | 0.14   | 0.16         | 0.02 |
+| D=28   | 0.14   | 0.16         | -0.02 |
 | D=56   | 0.13   | 0.12         | 0.01 |
 
 Small. The test-optimal values are counterfactual and were not deployed.
 
 ## What the ratio sweep does and does not show
 
-Above roughly 17:1, applying the 10:1-optimal threshold performs worse than
-flagging everyone. This is not evidence that the threshold is fragile. It is
-what happens when a threshold optimised for one cost ratio is applied at
-another; the correct threshold for each ratio is in the sweep table and never
-loses to the trivial policy.
+Applying the 10:1-optimal threshold at a higher ratio eventually performs worse
+than flagging everyone. Where that happens is in `stage5_holdout.txt` section 6
+and differs by cutoff:
 
-Three claims are supported:
+| cutoff | frozen threshold first loses to flag-everyone at |
+|--------|--------------------------------------------------|
+| D=14   | never within the swept range of 2:1 to 20:1 (+0.22% at 20:1) |
+| D=28   | a ratio of 14 (-0.26%; still +0.02% at 13) |
+| D=56   | a ratio of 16 (-0.90%; still +0.04% at 15) |
+
+This is not evidence that the threshold is fragile. It is what happens when a
+threshold optimised for one cost ratio is applied at another; the correct
+threshold for each ratio is in the sweep table and never loses to the trivial
+policy. At D=28 the counterfactual test-optimal threshold still beats flagging
+everyone by 0.40% at 20:1.
+
+Two claims are supported:
 
 1. The cost-optimal threshold is sensitive to a ratio that was asserted rather
    than measured.
-2. Above roughly 17:1 the optimal policy converges on flag-everyone regardless
-   of model quality. This is a statement about the base rate.
-3. Deploying a 10:1 threshold when the true ratio is 18:1 would perform worse
-   than having no model. That is a deployment risk from miscalibrating an
-   assumption.
+2. Deploying a 10:1 threshold when the true ratio is 18:1 would perform worse
+   than having no model, at D=28 and D=56. That is a deployment risk from
+   miscalibrating an assumption.
+
+A third claim made in the first version of this document is withdrawn: that
+above roughly 17:1 the optimal policy converges on flag-everyone regardless of
+model quality. No such convergence appears anywhere in the swept range, the
+figure 17 matches no cutoff, and the claim contradicted this document's own
+observation that the per-ratio optimal threshold never loses to the trivial
+policy. What is true is narrower and is stated above: the FROZEN threshold, not
+the optimal one, is what stops paying at a high enough ratio.

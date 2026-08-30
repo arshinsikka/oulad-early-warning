@@ -24,17 +24,17 @@ The model discriminates. On the metric I had pre-registered as primary, it is wo
 
 Expected cost at a 10:1 penalty for missing a student came out at 0.587 for LightGBM. Flagging every student in the cohort costs 0.592. The model beats the trivial policy by 0.84%, and the logistic model at its frozen threshold is marginally worse than flagging everyone.
 
-The mechanism is arithmetic. Expected cost is (10 × false negatives + false positives) / n. At a base rate of 0.408, missing anyone is punished ten times harder than a false alarm, so the cost-optimal policy collapses onto alerting on everybody and stops distinguishing between models. The pre-committed sweep from 2:1 to 20:1 shows exactly where it breaks: above roughly 17:1 the optimum is flag-everyone regardless of what the model knows.
+The mechanism is arithmetic. Expected cost is (10 × false negatives + false positives) / n. At a base rate of 0.408, missing anyone is punished ten times harder than a false alarm, so the cost-optimal policy collapses towards alerting on everybody and stops distinguishing between models. The pre-committed sweep from 2:1 to 20:1 shows where the frozen policy stops paying: at day 28 it beats flagging everyone by 0.84% at 10:1, by 0.02% at 13:1, and from 14:1 upward it is worse than flagging everyone. At day 56 that crossover is 16:1, and at day 14 it never happens inside the swept range. The optimum itself does not become flag-everyone anywhere in that range — the counterfactual test-optimal threshold still beats flagging everyone by 0.40% at 20:1. What breaks is the frozen threshold, applied at a ratio it was not chosen for.
 
 I picked 10:1 by analogy to credit and fraud problems, where base rates run between 1 and 5%. At 41% it is the wrong ratio, and I fixed it before looking at any data, so it stays. Section 9 of the protocol says the ratio is asserted rather than measured. It turned out to determine the conclusion.
 
-## Five of six outcomes are undecidable
+## Four of six outcomes are undecidable
 
 Section 13 declared nine outcomes in advance and called each a valid finding. What it did not do, for most of them, was say what would count as meeting one.
 
-O1 and O2 turn on whether a bootstrap interval contains zero, which the protocol does specify. The paired difference between LightGBM and logistic at day 28 is -0.005 with an interval of [-0.017, 0.006], so O2 is met and gradient boosting is not shown to be warranted on the primary metric.
+Two of the six Arm 1 outcomes are decided. O1 and O2 turn on whether a bootstrap interval contains zero, which the protocol does specify. The paired difference between LightGBM and logistic at day 28 is -0.005 with an interval of [-0.017, 0.006], so O2 is met, O1 is not, and gradient boosting is not shown to be warranted on the primary metric.
 
-O3 through O6 are worded as "substantially worse" and "materially worse" with no threshold attached anywhere. My first pass through the results invented three: a 10% relative AUC-PR drop, and 15% relative cost degradation used twice. All three were chosen after I could see the numbers, and each landed on the convenient side. They are withdrawn, and those four outcomes are reported as undetermined with the underlying figures printed and no verdict derived.
+O3 through O6 are worded as "substantially worse" and "materially worse" with no threshold attached anywhere. My first pass through the results invented three: a 10% relative AUC-PR drop, and 15% relative cost degradation used twice. All three were chosen after I could see the numbers, and each landed on the convenient side. They are withdrawn, and all four of those outcomes are reported as undetermined with the underlying figures printed and no verdict derived. Arm 2 is decidable throughout: O7, O8 and O9 turn on statistical significance and on whether the validity check fails, both of which Section 12 specified.
 
 Pre-registering an outcome does nothing unless you also pre-register the criterion that decides it. That is the clearest thing this study taught me and it is a finding about my protocol rather than about the model.
 
@@ -75,15 +75,21 @@ The students an early warning system exists to reach are the ones the causal des
 ```
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-python src/stage1_ingest.py      # asks for the path to the OULAD zip
+python src/stage1_ingest.py <path to oulad.zip>
 python src/stage1_validate.py
-python src/stage2_cohort.py
-python src/stage3_features.py
-python src/stage4_ladder.py
+python src/stage2_cohort.py        # builds the cohort tables
+python src/stage2_report.py        # writes the report — Verification Stop 1
+python src/stage3_features.py      # builds the feature tables
+python src/stage3_report.py        # writes the report — Verification Stop 2
+python src/stage4_ladder.py        # fits the ladder, freezes the threshold
+python src/stage4_report.py        # writes the report
 python src/stage5_holdout.py
 python src/stage6_report.py
-python src/stage7_rdd.py
+python src/stage7_report.py
+python src/stage8_a2_overlap.py
 ```
+
+Stages 2, 3 and 4 split computation from reporting, and both halves must run. Everything else in `src/` is a module imported by one of these, not an entry point. Full detail, including which artefacts are immutable once written, is in [reports/FINDINGS.md](reports/FINDINGS.md) section 7.
 
 Data comes from the UCI Machine Learning Repository, dataset 349, licensed CC-BY 4.0. Checksums for the seven source CSVs are in `data/CHECKSUMS.txt`. The raw data and the DuckDB database are not committed.
 

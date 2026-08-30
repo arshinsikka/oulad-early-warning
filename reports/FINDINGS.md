@@ -183,7 +183,7 @@ inferred.
 | # | Amends | What changed | Why | Stage found | Found by |
 |---|---|---|---|---|---|
 | **A1** | §6 Group E | All five Group E assessment features computed over `is_banked = 0` rows only | A banked score is carried from a previous presentation and is not evidence of engagement in the window being measured | Stage 1 validation | Manual. The specification was written from the published table schema without inspecting the column set. |
-| **A2** | §4 | Students recurring across the split are retained, but the overlap between the test split and training presentations must be reported as a competing explanation | 32,593 rows over 28,785 distinct students, so a student can appear on both sides of the split. Not leakage, but per-student memorisation becomes an alternative explanation for test performance | Stage 1 validation | Not stated in the protocol. The counts come from the Stage 1 report; the implication was drawn from them. |
+| **A2** | §4 | Students recurring across the split are retained, but the overlap between the test split and training presentations must be reported as a competing explanation | 32,593 rows over 28,785 distinct students, so a student can appear on both sides of the split. Not leakage, but per-student memorisation becomes an alternative explanation for test performance | Stage 1 validation | Not stated in the protocol. The counts come from the Stage 1 report; the implication was drawn from them. A2's reporting commitment went unmet until Stage 8; it is discharged in `reports/stage8_a2_overlap.txt`. |
 | **A3** | §6 Group C | Engagement slope fitted by OLS over daily click counts from day 0 to D−1, not weekly | At D = 14 the weekly version is a difference between two points, not a regression, and is not comparable to D = 56 where it fits over eight | Before Stage 2 code | Manual. "A specification defect, found on reading the protocol back before implementation rather than from any data." |
 | **A4** | §2 | Provenance recorded as the UCI mirror (dataset 349, DOI 10.24432/C5KK69) rather than the OU download page | The OU page was non-functional at time of ingest. Originating publication unchanged | Stage 1 ingest | Not stated in the protocol. Operational, discovered while fetching the data. |
 | **A5** | §6 Groups B, C, D | The observation window has no lower bound: it is "everything known up to day D", not "the first D days" | `student_vle` contains activity from day −25, so five features include pre-start engagement. Retained rather than corrected: it is known at prediction time and breaches no leakage rule | Stage 3, Verification Stop 2 | **Manual.** "Found at Verification Stop 2 by manually tracing a sampled student against the raw table, not by any automated check." |
@@ -318,7 +318,9 @@ computation from reporting, and both halves must run.
 | 9 | `src/stage5_holdout.py` | `reports/stage5_holdout.txt`, `reports/stage5_test_predictions.parquet` |
 | 10 | `src/stage6_report.py` | `reports/stage6_drift_explainability.txt` |
 | 11 | `src/stage7_report.py` | `reports/stage7_rdd.txt` |
+| 12 | `src/stage8_a2_overlap.py` | `reports/stage8_a2_overlap.txt` — discharges Amendment A2 |
 
+Stages 2, 3 and 4 split computation from reporting, and both halves must run.
 `src/stage7_rdd.py`, `src/stage6_drift.py`, `src/stage4_models.py`,
 `src/stage4_preprocess.py`, `src/stage4_guard.py`, `src/stage5_metrics.py` and
 `src/stage2_views.py` are modules imported by the runners above, not entry
