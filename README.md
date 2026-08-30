@@ -4,6 +4,8 @@ A pre-registered study on the Open University Learning Analytics Dataset. Two qu
 
 The first question has an answer. The second one doesn't, and finding out why was the more useful half.
 
+**Findings:** the consolidated write-up — results, all nine declared outcomes, the amendment log and the limitations — is in [reports/FINDINGS.md](reports/FINDINGS.md).
+
 The protocol is the first commit in this repository. Every decision that could have been tuned after seeing results was fixed before any code existed: the features, the split, the metrics, the cost assumption, the operating threshold, and the nine outcomes I committed to reporting whichever one occurred. Seven amendments follow, each recording something the protocol got wrong and when I found it.
 
 ## What the model does
