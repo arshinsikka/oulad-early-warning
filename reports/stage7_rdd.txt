@@ -1,0 +1,285 @@
+Stage 7 Report: Arm 2, Regression Discontinuity at the Pass Mark
+Per Section 12. Arm 2 is independent of Arm 1: no model artefact, no frozen threshold and no Stage 5 prediction is loaded here. The Arm 1 cohort is read once, in Section 9, only to size the population gap between the two arms.
+
+1. Population
+=============
+
+The running variable is the score on the FIRST TMA of each module-presentation, taken by due date with id_assessment as a deterministic tie-break. Section 12 fixes the first assessed piece of work as the running variable; Amendment A1 excludes banked scores, which are carried from a previous presentation and are not evidence of work done in this one.
+
+  module  presentation    id_assessment  due day  weight
+  AAA     2013J                    1752       19    10.0
+  AAA     2014J                    1758       19    10.0
+  BBB     2013B                   14984       19     5.0
+  BBB     2013J                   14996       19     5.0
+  BBB     2014B                   15008       12     5.0
+  BBB     2014J                   15020       19     0.0
+  CCC     2014B                   24282       32     9.0
+  CCC     2014J                   24291       32     9.0
+  DDD     2013B                   25334       25     7.5
+  DDD     2013J                   25348       25    10.0
+  DDD     2014B                   25355       25    10.0
+  DDD     2014J                   25362       20     5.0
+  EEE     2013J                   30709       33    16.0
+  EEE     2014B                   30714       33    16.0
+  EEE     2014J                   30719       33    16.0
+  FFF     2013B                   34860       19    12.5
+  FFF     2013J                   34873       19    12.5
+  FFF     2014B                   34886       24    12.5
+  FFF     2014J                   34899       24    12.5
+  GGG     2013J                   37415       61     0.0
+  GGG     2014B                   37425       61     0.0
+  GGG     2014J                   37435       61     0.0
+
+  Population waterfall:
+    submission rows against a first TMA           24465
+    - null score                                     39
+    - banked (Amendment A1)                         510
+    = Arm 2 population                            23916
+
+  Distinct students                               22261
+  Non-completion rate in this population         0.3825
+  Score range                                  0 to 100
+  Presentations used                           all four (2013B, 2013J, 2014B, 2014J)
+
+No Section 3 exclusion is applied. E1, E2 and E3 exist to make a prediction at day D honest; Arm 2 makes no prediction and has no prediction point, so they do not apply. The consequence is that the two arms cover different populations, and Section 9 below sizes the difference rather than leaving it as a caveat.
+
+  presentation          n  base_rate
+  2013B              3661     0.4327
+  2013J              6855     0.3594
+  2014B              5332     0.4102
+  2014J              8068     0.3609
+
+
+2. Specification
+================
+
+  Running variable      first-TMA score, centred at 40
+  Outcome               not_completed (Section 3: Fail or Withdrawn)
+  Primary bandwidth     +/- 10 marks
+  Robustness            5, 8, 15, 20
+  Estimator             local linear, triangular kernel, separate slopes each side
+  Inference             robust bias-corrected (Calonico, Cattaneo, Titiunik), via rdrobust
+
+The estimate is the limit from the right minus the limit from the left, so it is the effect of landing just ABOVE the pass mark. A negative coefficient means narrowly passing is associated with less non-completion.
+rdrobust reports mass points in the running variable: scores are integers, so every attainable value is a mass point. That is a property of the data, not a defect of the fit, and it is handled by the estimator's mass-point adjustment. It matters for V1 below.
+
+
+3. Primary and robustness estimates
+===================================
+
+  bw   method             estimate       SE              [95% CI]         p   n_left  n_right
+  5    Conventional        -0.1199   0.0688     [-0.2548,+0.0150]    0.0816      131      358
+       Bias-corrected      -0.1777   0.0688     [-0.3126,-0.0428]    0.0098
+       Robust              -0.1777   0.1572     [-0.4859,+0.1304]    0.2583
+
+  8    Conventional        -0.1155   0.0543     [-0.2219,-0.0091]    0.0334      215      623
+       Bias-corrected      -0.1258   0.0543     [-0.2322,-0.0194]    0.0205
+       Robust              -0.1258   0.0908     [-0.3038,+0.0522]    0.1661
+
+  10   Conventional        -0.1083   0.0490     [-0.2044,-0.0123]    0.0270      247      792  <- primary
+       Bias-corrected      -0.1284   0.0490     [-0.2245,-0.0324]    0.0088
+       Robust              -0.1284   0.0775     [-0.2803,+0.0234]    0.0973
+
+  15   Conventional        -0.0885   0.0391     [-0.1651,-0.0119]    0.0236      340     1563
+       Bias-corrected      -0.1248   0.0391     [-0.2014,-0.0482]    0.0014
+       Robust              -0.1248   0.0599     [-0.2421,-0.0075]    0.0370
+
+  20   Conventional        -0.0801   0.0342     [-0.1471,-0.0131]    0.0191      390     2603
+       Bias-corrected      -0.1019   0.0342     [-0.1689,-0.0349]    0.0029
+       Robust              -0.1019   0.0517     [-0.2032,-0.0006]    0.0487
+
+Conventional inference uses the point estimate and its own standard error. Bias-corrected recentres the estimate for the bias local linear fitting leaves behind; robust uses that recentred estimate with a variance that accounts for the correction, and it is the inference Section 12 pre-committed to. Where the three disagree, the robust row is the one that counts.
+
+
+4. V1. McCrary density test for manipulation of the running variable
+====================================================================
+
+Section 12: 'If markers push borderline students up to 40, the design is compromised and the result is reported as invalid rather than quietly retained. Heaping at round numbers is expected; whether it is asymmetric around 40 is the question.'
+
+Cattaneo-Jansson-Ma manipulation test (rddensity), the modern form of the same test:
+  density estimate left of 40    0.001694
+  density estimate right of 40   0.002557
+  difference (right - left)      +0.000863
+  bandwidths (left, right)       23.000, 23.000
+  asymptotic variance            not available (mass points in the running variable), jackknife used
+  t (jackknife)                  2.4704   p = 0.0135
+
+McCrary (2008) as originally specified, implemented directly: bin width 1 (every attainable score is its own bin, so no bin straddles the cutoff), weighted local linear regression of the normalised bin heights on their midpoints with a triangular kernel, fitted separately each side at bandwidth 10 and evaluated at the cutoff.
+  f_left                         0.001413
+  f_right                        0.003659
+  theta = ln(f+) - ln(f-)        +0.9516
+  SE(theta)                      0.1403
+  z                              +6.7811   p = 0.0000
+
+Raw frequency of every score from 30 to 50, so heaping is visible directly:
+  score         n   histogram
+  30           39   ########
+  31            7   #
+  32           25   #####
+  33           20   ####
+  34           28   #####
+  35           36   #######
+  36           45   #########
+  37           18   ###
+  38           42   ########
+  39           26   #####
+  40          143   ############################  <- pass mark
+  41           32   ######
+  42           67   #############
+  43           41   ########
+  44           75   ##############
+  45          142   ###########################
+  46           87   #################
+  47           36   #######
+  48          109   #####################
+  49           60   ############
+  50          312   ############################################################
+
+Round-number heaping, which Section 12 says to expect. Each multiple of five against the mean of its two neighbours:
+  score         n   mean of neighbours    ratio
+  30           39                  7.0     5.57
+  35           36                 36.5     0.99
+  40          143                 29.0     4.93
+  45          142                 81.0     1.75
+  50          312                 60.0     5.20
+
+V1 RESULT: the pre-committed manipulation test REJECTS the null of a continuous density at the pass mark (p = 0.0135 < 0.05). The estimated density is HIGHER just above 40 than just below it, which is the direction that marking to the boundary would produce: borderline scripts pushed up to a pass rather than left just below one.
+The heaping table above is reported because Section 12 asks for it, and it shows that 40 is not the only spike: every multiple of five is elevated. It is not, however, a reason to set the test aside. The test was pre-committed, it was run as specified, and it rejected. Reading the heaping table as a reason to keep the design would be choosing the criterion after seeing the result, which is the practice this protocol exists to prevent.
+
+
+5. V2. Covariate balance at the cutoff
+======================================
+
+The same specification at the primary bandwidth, with each Group A feature as the outcome in place of not_completed. Multi-level categoricals are tested one indicator per level, since a discontinuity in any level is a discontinuity in the covariate. A significant jump in a pre-determined characteristic undermines the design: those characteristics are fixed before the score is awarded and cannot be caused by it.
+
+  covariate                                     estimate       SE              [95% CI]         p
+  num_of_prev_attempts                           -0.0086   0.1419     [-0.2866,+0.2695]    0.9517
+  studied_credits                               -13.2613  10.8652    [-34.5567,+8.0341]    0.2223
+  gender = F                                     +0.1059   0.1352     [-0.1592,+0.3710]    0.4337
+  gender = M                                     -0.1059   0.1352     [-0.3710,+0.1592]    0.4337
+  region = East Anglian Region                   -0.0169   0.0880     [-0.1893,+0.1556]    0.8478
+  region = East Midlands Region                  -0.0092   0.0703     [-0.1470,+0.1286]    0.8956
+  region = Ireland                               -0.0064   0.0264     [-0.0581,+0.0454]    0.8093
+  region = London Region                         -0.0579   0.0911     [-0.2364,+0.1206]    0.5251
+  region = North Region                          -0.0828   0.0870     [-0.2532,+0.0876]    0.3409
+  region = North Western Region                  -0.0014   0.0924     [-0.1825,+0.1798]    0.9883
+  region = Scotland                              +0.1184   0.0653     [-0.0097,+0.2464]    0.0700
+  region = South East Region                     -0.0067   0.0391     [-0.0834,+0.0700]    0.8638
+  region = South Region                          -0.0156   0.0824     [-0.1770,+0.1459]    0.8502
+  region = South West Region                     +0.0703   0.0574     [-0.0423,+0.1828]    0.2211
+  region = Wales                                 -0.0593   0.0793     [-0.2147,+0.0961]    0.4543
+  region = West Midlands Region                  +0.0038   0.0737     [-0.1407,+0.1483]    0.9587
+  region = Yorkshire Region                      +0.0637   0.0408     [-0.0164,+0.1437]    0.1191
+  highest_education = A Level or Equivalent      +0.0653   0.1339     [-0.1972,+0.3278]    0.6259
+  highest_education = HE Qualification           -0.1014   0.0875     [-0.2729,+0.0701]    0.2466
+  highest_education = Lower Than A Level         +0.0034   0.1373     [-0.2657,+0.2725]    0.9804
+  highest_education = No Formal quals            +0.0329   0.0285     [-0.0230,+0.0887]    0.2488
+  highest_education = Post Graduate Qualification   -0.0001   0.0004     [-0.0009,+0.0006]    0.7394
+  imd_band = 0-10%                               +0.0156   0.0810     [-0.1431,+0.1743]    0.8475
+  imd_band = 10-20%                              -0.0027   0.0917     [-0.1825,+0.1771]    0.9767
+  imd_band = 20-30%                              -0.0104   0.0977     [-0.2019,+0.1810]    0.9150
+  imd_band = 30-40%                              +0.0754   0.0662     [-0.0544,+0.2052]    0.2548
+  imd_band = 40-50%                              +0.0110   0.0875     [-0.1604,+0.1824]    0.9001
+  imd_band = 50-60%                              -0.0833   0.1002     [-0.2797,+0.1130]    0.4056
+  imd_band = 60-70%                              -0.0044   0.0693     [-0.1402,+0.1314]    0.9497
+  imd_band = 70-80%                              +0.0531   0.0685     [-0.0812,+0.1875]    0.4381
+  imd_band = 80-90%                              -0.0048   0.0700     [-0.1419,+0.1323]    0.9458
+  imd_band = 90-100%                             +0.0069   0.0539     [-0.0987,+0.1125]    0.8982
+  imd_band = __NULL__                            -0.0564   0.0551     [-0.1643,+0.0515]    0.3052
+  age_band = 0-35                                +0.0324   0.1210     [-0.2047,+0.2695]    0.7888
+  age_band = 35-55                               -0.0336   0.1209     [-0.2707,+0.2034]    0.7811
+  age_band = 55<=                                +0.0012   0.0014     [-0.0016,+0.0040]    0.4033
+  disability = N                                 -0.0619   0.0899     [-0.2382,+0.1144]    0.4915
+  disability = Y                                 +0.0619   0.0899     [-0.1144,+0.2382]    0.4915
+
+V2 RESULT: 0 of 38 covariate tests reject at alpha = 0.05 on robust inference. The tests are not independent of one another — the levels of a categorical are mechanically linked, and a two-level covariate such as gender or disability produces two mirror-image rows — so the number of rejections expected by chance is not simply alpha times 38. No multiplicity correction is applied: the protocol pre-registered neither a correction nor a rule for reading the count, and choosing one now would be choosing it in knowledge of the result. Every row is reported so a reader can apply their own.
+
+
+6. V3. Placebo cutoffs
+======================
+
+The same specification and bandwidth at scores where no rule exists. A discontinuity appearing at one of these means the specification is finding noise rather than the pass mark. At bandwidth 10 none of these windows contains the real cutoff with non-zero kernel weight, so they are not contaminated by it.
+
+  cutoff   method             estimate       SE              [95% CI]         p   n_left  n_right
+  30       Conventional        -0.1293   0.0616     [-0.2502,-0.0085]    0.0359      104      286
+           Robust              -0.0813   0.0800     [-0.2380,+0.0754]    0.3095
+
+  50       Conventional        -0.0336   0.0470     [-0.1258,+0.0586]    0.4751      649     1811
+           Robust              -0.0952   0.0749     [-0.2420,+0.0516]    0.2036
+
+  60       Conventional        -0.0193   0.0351     [-0.0882,+0.0496]    0.5833     1499     3581
+           Robust              -0.0347   0.0578     [-0.1481,+0.0786]    0.5482
+
+
+7. V4. Donut specification
+==========================
+
+Scores within 1 mark of the pass mark are excluded, in case exact-40 scores are administratively assigned rather than earned. Given the spike at exactly 40 in the V1 table, this drops the mass point itself along with its immediate neighbours.
+
+  rows dropped: 201 (scores 39 to 41), 23715 retained
+
+  bw   method             estimate       SE              [95% CI]         p   n_left  n_right
+  10   Conventional        -0.0473   0.0706     [-0.1856,+0.0910]    0.5024      221      617
+       Bias-corrected      -0.0248   0.0706     [-0.1631,+0.1135]    0.7250
+       Robust              -0.0248   0.1556     [-0.3299,+0.2802]    0.8733
+
+Reported as measured: the bias-corrected point estimate moves from -0.1284 on the full sample to -0.0248 once the 201 rows at scores 39 to 41 are removed, and the robust interval widens accordingly. Section 12 pre-committed to running this specification and to reporting it whatever it showed; it did not state how to read a difference of this kind, and no rule for reading one is invented here. What can be said without a criterion is factual: most of what the full-sample estimate measures comes from the rows at and immediately around the mass point that V1 flags.
+
+
+8. Power analysis
+=================
+
+Independent of what the RD found. Section 12 asks what a randomised trial would need in order to detect an intervention effect of a given size, which is the artefact that answers 'how would you design the experiment' without pretending one was run.
+
+Two-sided two-proportion test, alpha = 0.05, power = 80%, control non-completion rate = 0.3825 (the observed rate in the Arm 2 population). The effect is a reduction in that rate, in percentage points.
+
+  effect (pp)     treated rate   n per arm    n total
+  1                     0.3725       36884      73768
+  2                     0.3625        9169      18338
+  3                     0.3525        4051       8102
+  4                     0.3425        2264       4528
+  5                     0.3325        1439       2878
+  6                     0.3225         992       1984
+  7                     0.3125         723       1446
+  8                     0.3025         549       1098
+  9                     0.2925         430        860
+  10                    0.2825         345        690
+
+Minimum detectable effect of the RD design itself, at the primary bandwidth:
+  effective sample size          247 left, 792 right (1039 total)
+  MDE on conventional             0.1373 (13.7 percentage points), from SE = 0.0490
+  MDE on robust                   0.2170 (21.7 percentage points), from SE = 0.0775
+
+This is what makes a null interpretable. An effect smaller than the MDE would not have been detected by this design at this bandwidth whether or not it exists, so a null here is a statement about what the design could see, not a statement that the effect is zero.
+
+
+9. What this does not establish
+===============================
+
+Section 12 states the limitation and Section 14 L1 repeats it: this is a local effect at one score boundary, among students who sat and were marked on the first assessment. It says nothing about students who never submitted, and those are the highest-risk group in Arm 1. The size of that gap is a number, not a caveat:
+
+  group                                                      n    share  not_completed
+  Arm 1 cohort at D=28 (all splits)                      27530   1.0000         0.4414
+    of which also in the Arm 2 population                23637   0.8586         0.3752
+    of which NOT in the Arm 2 population                  3893   0.1414         0.8433
+
+  Arm 2 rows absent from the Arm 1 D=28 cohort: 279 (removed by E1, E2 or E3 there, but retained here because Arm 2 applies no such exclusion).
+
+3893 of the 27530 students the Arm 1 model scores at D=28 (14.1%) are outside the Arm 2 population, and their non-completion rate is 0.8433 against 0.3752 for those inside it. The population Arm 2 can speak to is the one that already engaged enough to be marked; the students the early warning system most needs to reach are, by construction, the ones this design cannot see. That disconnect is not resolved here and is not resolvable within this design.
+
+
+10. Declared outcomes (Section 13)
+==================================
+
+Unlike O3 to O6, these three are decidable as the protocol wrote them. O7 and O8 turn on statistical significance, which Section 12 fixes by specifying robust bias-corrected inference, and O9 turns on whether V1 fails, which V1 is a test of. No numeric convention has to be invented to reach a verdict here, and none is.
+
+O9 MET: V1 fails. The pre-committed manipulation test rejects a continuous density at the pass mark (jackknife t = 2.4704, p = 0.0135), with excess mass just ABOVE 40. Section 12 declared in advance that if markers push borderline students up to 40, 'the design is compromised and the result is reported as invalid rather than quietly retained'. It is so reported.
+
+The consequence, stated plainly. The identifying assumption of this design is that which side of 40 a student lands on is as good as random for students near the line. If scripts near the line are being moved across it, then which side a student lands on reflects a marker's judgment about that student, and the comparison is no longer between similar students who differ by luck. The estimates in Section 3 are printed because the protocol requires every pre-committed quantity to be reported whatever it shows, NOT because they are interpretable as causal effects. They are not.
+
+For the record and not as a finding: the primary estimate at bandwidth 10 is -0.1284 with robust 95% CI [-0.2803, +0.0234], p = 0.0973. Under the pre-committed inference this interval contains zero, so even taking the design at face value it would not have supported O7.
+
+Per Section 12's declared outcome O9, Arm 2 is reduced to the power analysis alone. The power analysis in Section 8 stands: it does not depend on the RD being valid, only on the observed outcome variance in this population, and it is the part of Arm 2 that survives.
+
+No bandwidth search, no alternative cutoff and no respecification was attempted to rescue the design. The specification run here is the one Section 12 fixed in advance.
+
