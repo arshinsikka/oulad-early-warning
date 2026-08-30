@@ -85,9 +85,18 @@ arithmetic artefact. That is also wrong. Discrimination fell:
 AUC-PR moves with prevalence, and a fall from 0.79 to 0.68 against a base rate
 moving 0.48 to 0.41 is larger than prevalence accounts for.
 
-**O5 is met**, on the evidence of falling discrimination across presentations,
-not on the raw cost figure. Stage 6's PSI analysis should identify which
-features moved.
+**O5 is undetermined.** Section 13 declared the outcome without defining what
+would count as meeting it, and the 15% convention used in the first pass was
+chosen after the results were known. Both readings above are reported; neither
+is converted into a verdict.
+
+The same defect applies to O3, O4 and O6. Of the six Arm 1 outcomes, only
+O1/O2 is decidable, because it is the only one whose criterion (whether a
+bootstrap interval contains zero) the protocol actually specified.
+
+Declaring outcomes in advance is worth nothing unless the criterion that
+decides between them is declared too. That is a finding about the protocol,
+not about the model.
 
 Note: B3 degraded far more than M1 (0.7843 to 0.6106, against 0.7870 to
 0.6794). The linear model generalised worse across presentations.
