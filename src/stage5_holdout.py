@@ -158,14 +158,16 @@ def main() -> None:
             }
 
         # Paired M1 vs B3 bootstrap, same resample indices for both.
+        # The reported quantity is M1 - B3, in the order the label states. Expected
+        # cost is a loss, so a NEGATIVE difference means M1 is the cheaper model.
         diffs = []
         for idx in resamples:
             yt = y_test[idx]
             cost_b3 = expected_cost(yt, probs["B3"][idx], frozen_cutoff["B3"]["threshold"], HEADLINE_RATIO)
             cost_m1 = expected_cost(yt, probs["M1"][idx], frozen_cutoff["M1"]["threshold"], HEADLINE_RATIO)
-            diffs.append(cost_b3 - cost_m1)
+            diffs.append(cost_m1 - cost_b3)
         paired_interval = percentile_interval(diffs)
-        paired_point = (rung_results["B3"]["point"]["expected_cost"] - rung_results["M1"]["point"]["expected_cost"])
+        paired_point = (rung_results["M1"]["point"]["expected_cost"] - rung_results["B3"]["point"]["expected_cost"])
 
         selected_rung = min(RUNG_NAMES, key=lambda r: frozen_cutoff[r]["validate_expected_cost"])
 
@@ -249,22 +251,26 @@ def main() -> None:
                 out.append(f"    [{b['bin_lo']:.1f},{b['bin_hi']:.1f}){'':<4}{b['count']:>8}{pm:>12}{orate:>12}")
         out.append("")
 
-    out.append(section(f"4. Paired M1 - B3 expected cost difference (positive = M1 cheaper), test, all cutoffs"))
+    out.append(section(f"4. Paired M1 - B3 expected cost difference (negative = M1 cheaper), test, all cutoffs"))
+    out.append(
+        "point_diff is cost(M1) - cost(B3), in that order. Expected cost is a loss, so a "
+        "NEGATIVE difference means M1 costs less than B3 and a positive one means B3 costs less."
+    )
     out.append(f"{'cutoff':<8}{'point_diff':>12}{'[95% CI]':>22}{'outcome':>10}  detail")
     for D in CUTOFFS:
         pc = per_cutoff[D]["paired_diff_point"]
         lo, hi = per_cutoff[D]["paired_diff_interval"]
         interval_excludes_zero = not (lo <= 0 <= hi)
-        if interval_excludes_zero and pc > 0:
-            outcome, detail = "O1", "M1 materially beats B3"
-        elif interval_excludes_zero and pc < 0:
+        if interval_excludes_zero and pc < 0:
+            outcome, detail = "O1", "M1 materially beats B3 (M1 cheaper)"
+        elif interval_excludes_zero and pc > 0:
             outcome, detail = "O2", "B3 materially beats M1 (not O1: M1 does not win)"
         else:
             outcome, detail = "O2", "interval includes zero, no separated margin either way"
         out.append(f"D={D:<6}{pc:>12.4f}{ci_str((lo, hi)):>22}{outcome:>10}  {detail}")
     out.append("")
     out.append(
-        "O1 = M1 materially beats B3 (interval excludes zero, M1 cheaper). "
+        "O1 = M1 materially beats B3 (interval excludes zero and lies below it, M1 cheaper). "
         "O2 = M1 does not beat B3 by an interval-separated margin — this covers both a null result "
         "and the case where B3 significantly beats M1, since O1 requires M1 to win. "
         "Per Section 13, the formal declared outcome is scoped to D=28; D=14/D=56 shown as "
@@ -273,16 +279,30 @@ def main() -> None:
     out.append("")
 
     out.append(section(f"5. Slice reporting, D={SLICE_CUTOFF}, selected model = {per_cutoff[SLICE_CUTOFF]['selected_rung']}"))
-    out.append("Reported, not corrected. No fairness intervention. Slices with n < 100 are flagged underpowered.")
-    out.append("")
     sel = per_cutoff[SLICE_CUTOFF]["selected_rung"]
     sel_threshold = frozen["cutoffs"][str(SLICE_CUTOFF)][sel]["threshold"]
     sel_prob = per_cutoff[SLICE_CUTOFF]["probs"][sel]
     sel_y = per_cutoff[SLICE_CUTOFF]["y_test"]
     sel_df = per_cutoff[SLICE_CUTOFF]["test_df"]
+    slice_overall_cost = per_cutoff[SLICE_CUTOFF]["rung_results"][sel]["point"]["expected_cost"]
+
+    out.append("Reported, not corrected. No fairness intervention. Slices with n < 100 are flagged underpowered.")
+    out.append(
+        f"gap% is (slice expected cost - overall expected cost) / overall expected cost, in percent, where the "
+        f"overall figure is {slice_overall_cost:.4f} (model {sel}, D={SLICE_CUTOFF}, whole test split). Expected cost "
+        "is a loss, so a positive gap% means the slice is worse than the cohort overall. The gap is on expected "
+        "cost because Section 8 designates it the primary metric; the slice values of the secondary metrics are "
+        "in the same rows for a reader who wants to form the same ratio on those."
+    )
+    out.append(
+        "The protocol does not define a threshold at which a gap becomes material (see Section 8 of this report), "
+        "so no slice is labelled materially worse or not materially worse here. The numbers are reported as measured."
+    )
+    out.append("")
+    slice_gaps = []
     for col in SLICE_COLS:
         out.append(f"--- {col} ---")
-        out.append(f"{'value':<28}{'n':>7}{'flag':>6}{'cost':>9}{'AUC-PR':>9}{'AUC-ROC':>9}{'Brier':>9}{'recall@10%':>12}")
+        out.append(f"{'value':<28}{'n':>7}{'flag':>6}{'cost':>9}{'gap%':>9}{'AUC-PR':>9}{'AUC-ROC':>9}{'Brier':>9}{'recall@10%':>12}")
         values = sel_df[col].fillna("__NULL__").unique().tolist()
         for value in sorted(values, key=str):
             mask = (sel_df[col].fillna("__NULL__") == value).values
@@ -296,8 +316,10 @@ def main() -> None:
                 continue
             m = ranking_metrics(yt, yp, rng=metrics_rng)
             cost = expected_cost(yt, yp, sel_threshold, HEADLINE_RATIO)
+            gap_pct = (cost - slice_overall_cost) / slice_overall_cost * 100 if slice_overall_cost else float("nan")
+            slice_gaps.append({"col": col, "value": value, "n": n, "flag": flag, "cost": cost, "gap_pct": gap_pct})
             out.append(
-                f"{str(value):<28}{n:>7}{flag:>6}{cost:>9.4f}{m['auc_pr']:>9.4f}"
+                f"{str(value):<28}{n:>7}{flag:>6}{cost:>9.4f}{gap_pct:>8.1f}%{m['auc_pr']:>9.4f}"
                 f"{m['auc_roc']:>9.4f}{m['brier']:>9.4f}{m['recall_at_10pct']:>12.4f}"
             )
         out.append("")
@@ -353,23 +375,25 @@ def main() -> None:
     # --- 8. Declared outcomes ---
     out.append(section("8. Declared outcomes (Section 13)"))
     out.append(
-        "O1/O2 are decided by the bootstrap interval (no free parameter). O3/O4 and O5/O6 require a "
+        "O1/O2 are decided by the bootstrap interval (no free parameter). O3/O4 and O5 require a "
         "judgment of 'close' vs 'substantially worse' and 'sharp' degradation; the protocol does not fix "
         "numeric conventions for these (unlike D1's PSI thresholds in Section 10). Stated here as explicit, "
         "arbitrary conventions rather than left implicit: O3/O4 threshold at 10% relative AUC-PR drop, "
-        "O5/O6 threshold at 15% relative expected-cost degradation. A reader who disagrees with these can "
-        "read the raw percentages above and redraw the line."
+        "O5 threshold at 15% relative expected-cost degradation. A reader who disagrees with these can "
+        "read the raw percentages above and redraw the line. O6 is not decided by any convention: it is "
+        "reported as undetermined, for the reason given in the O6 block below."
     )
     out.append("")
 
     D28 = per_cutoff[28]
     lo, hi = D28["paired_diff_interval"]
-    o1_met = not (lo <= 0 <= hi) and D28["paired_diff_point"] > 0
+    o1_met = not (lo <= 0 <= hi) and D28["paired_diff_point"] < 0
     if o1_met:
-        out.append(f"O1 MET: at D=28, M1 beats B3 by {D28['paired_diff_point']:.4f} expected cost, "
+        out.append(f"O1 MET: at D=28, M1 beats B3 by {abs(D28['paired_diff_point']):.4f} expected cost "
+                    f"(M1 - B3 = {D28['paired_diff_point']:.4f}), "
                     f"95% CI [{lo:.4f}, {hi:.4f}] excludes zero.")
     else:
-        out.append(f"O2 MET: at D=28, M1 vs B3 expected cost difference is {D28['paired_diff_point']:.4f}, "
+        out.append(f"O2 MET: at D=28, the M1 - B3 expected cost difference is {D28['paired_diff_point']:.4f}, "
                     f"95% CI [{lo:.4f}, {hi:.4f}] does not exclude zero (or does not favour M1). "
                     "Gradient boosting is not shown to be warranted over regularised logistic regression here.")
 
@@ -404,31 +428,35 @@ def main() -> None:
         out.append("O5 NOT MET: test performance does not degrade sharply relative to validate; the model transfers to the 2014J holdout reasonably.")
     out.append("")
 
-    worst_slice = None
-    worst_cost = -1.0
-    for col in SLICE_COLS:
-        values = sel_df[col].fillna("__NULL__").unique().tolist()
-        for value in values:
-            mask = (sel_df[col].fillna("__NULL__") == value).values
-            n = int(mask.sum())
-            if n == 0 or len(set(sel_y[mask])) < 2:
-                continue
-            cost = expected_cost(sel_y[mask], sel_prob[mask], sel_threshold, HEADLINE_RATIO)
-            if cost > worst_cost:
-                worst_cost = cost
-                worst_slice = (col, value, n)
     overall_cost28 = per_cutoff[28]["rung_results"][per_cutoff[28]["selected_rung"]]["point"]["expected_cost"]
-    if worst_slice:
-        col, value, n = worst_slice
-        slice_gap_pct = (worst_cost - overall_cost28) / overall_cost28 * 100 if overall_cost28 else float("nan")
+    slice_model = per_cutoff[SLICE_CUTOFF]["selected_rung"]
+    out.append(
+        f"O6, slice performance at D={SLICE_CUTOFF}, model {slice_model}. Every slice reported in Section 5, with its "
+        f"expected cost as a percentage of the overall figure ({overall_cost28:.4f} on the whole test split). "
+        "Ranked by gap, worst first. Expected cost is a loss, so a positive gap is a slice doing worse than "
+        "the cohort overall and a negative gap is one doing better."
+    )
+    out.append("")
+    out.append(f"{'slice':<40}{'n':>7}{'flag':>10}{'cost':>9}{'gap%':>9}")
+    for row in sorted(slice_gaps, key=lambda r: -r["gap_pct"]):
+        label = f"{row['col']}={row['value']}"
         out.append(
-            f"Worst-performing slice at D=28: {col}={value!r} (n={n}), expected cost={worst_cost:.4f} "
-            f"vs overall {overall_cost28:.4f} ({slice_gap_pct:+.1f}%)."
+            f"{label:<40}{row['n']:>7}{row['flag']:>10}{row['cost']:>9.4f}{row['gap_pct']:>8.1f}%"
         )
-        if slice_gap_pct > 15:
-            out.append("O6 MET: slice reporting shows materially worse performance for at least one group. Reported, not corrected.")
-        else:
-            out.append("O6 NOT MET: no slice shows materially worse performance at D=28 by this comparison.")
+    out.append("")
+    out.append(
+        "Section 8 of the protocol makes slice reporting mandatory but does not define materiality: it fixes "
+        "no threshold, no metric and no comparison rule at which a slice gap counts as 'materially worse' for "
+        "the purposes of O6. Nothing in the pre-registered document supplies one. A criterion chosen now, with "
+        "these numbers already in view, would be a criterion selected in knowledge of the result, which is the "
+        "practice this protocol exists to prevent. None is supplied here, and the earlier version of this "
+        "report, which decided O6 against a 15% convention introduced after the fact, is withdrawn."
+    )
+    out.append(
+        "O6 UNDETERMINED: the gaps above are reported as measured. Whether any of them is materially worse in "
+        "the sense of O6 cannot be decided against the protocol as pre-registered, so O6 is reported as neither "
+        "met nor not met. A reader who holds a materiality standard of their own can apply it to the table above."
+    )
     out.append("")
 
     con_check = "PASS"

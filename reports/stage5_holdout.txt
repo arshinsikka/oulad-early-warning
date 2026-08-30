@@ -256,51 +256,54 @@ M1      0.1257   [0.1233,0.1277]   0.1297  0.2300   [0.2230,0.2370]    0.2594  0
     [0.9,1.0)        1090      0.9467      0.8385
 
 
-4. Paired M1 - B3 expected cost difference (positive = M1 cheaper), test, all cutoffs
+4. Paired M1 - B3 expected cost difference (negative = M1 cheaper), test, all cutoffs
 =====================================================================================
 
+point_diff is cost(M1) - cost(B3), in that order. Expected cost is a loss, so a NEGATIVE difference means M1 costs less than B3 and a positive one means B3 costs less.
 cutoff    point_diff              [95% CI]   outcome  detail
-D=14         -0.0049     [-0.0089,-0.0004]        O2  B3 materially beats M1 (not O1: M1 does not win)
-D=28          0.0051      [-0.0056,0.0167]        O2  interval includes zero, no separated margin either way
-D=56          0.0105      [-0.0060,0.0255]        O2  interval includes zero, no separated margin either way
+D=14          0.0049       [0.0004,0.0089]        O2  B3 materially beats M1 (not O1: M1 does not win)
+D=28         -0.0051      [-0.0167,0.0056]        O2  interval includes zero, no separated margin either way
+D=56         -0.0105      [-0.0255,0.0060]        O2  interval includes zero, no separated margin either way
 
-O1 = M1 materially beats B3 (interval excludes zero, M1 cheaper). O2 = M1 does not beat B3 by an interval-separated margin — this covers both a null result and the case where B3 significantly beats M1, since O1 requires M1 to win. Per Section 13, the formal declared outcome is scoped to D=28; D=14/D=56 shown as supplementary evidence of the same comparison at the other cutoffs.
+O1 = M1 materially beats B3 (interval excludes zero and lies below it, M1 cheaper). O2 = M1 does not beat B3 by an interval-separated margin — this covers both a null result and the case where B3 significantly beats M1, since O1 requires M1 to win. Per Section 13, the formal declared outcome is scoped to D=28; D=14/D=56 shown as supplementary evidence of the same comparison at the other cutoffs.
 
 
 5. Slice reporting, D=28, selected model = M1
 =============================================
 
 Reported, not corrected. No fairness intervention. Slices with n < 100 are flagged underpowered.
+gap% is (slice expected cost - overall expected cost) / overall expected cost, in percent, where the overall figure is 0.5871 (model M1, D=28, whole test split). Expected cost is a loss, so a positive gap% means the slice is worse than the cohort overall. The gap is on expected cost because Section 8 designates it the primary metric; the slice values of the secondary metrics are in the same rows for a reader who wants to form the same ratio on those.
+The protocol does not define a threshold at which a gap becomes material (see Section 8 of this report), so no slice is labelled materially worse or not materially worse here. The numbers are reported as measured.
 
 --- imd_band ---
-value                             n  flag     cost   AUC-PR  AUC-ROC    Brier  recall@10%
-0-10%                           820         0.5073   0.7347   0.7320   0.2192      0.1832
-10-20%                          912         0.5175   0.7322   0.7496   0.2121      0.1797
-20-30%                          973         0.5313   0.7464   0.7789   0.1984      0.1879
-30-40%                          980         0.5878   0.6853   0.7467   0.2132      0.2010
-40-50%                          925         0.6076   0.6608   0.7285   0.2193      0.1953
-50-60%                          921         0.6048   0.6558   0.7373   0.2173      0.1909
-60-70%                          887         0.6246   0.6398   0.7354   0.2147      0.1976
-70-80%                          873         0.6025   0.6855   0.7654   0.2028      0.2235
-80-90%                          809         0.6292   0.6016   0.7186   0.2258      0.1951
-90-100%                         747         0.6372   0.6151   0.7578   0.1970      0.2056
-__NULL__                        366         0.6667   0.5700   0.7313   0.1816      0.2286
+value                             n  flag     cost     gap%   AUC-PR  AUC-ROC    Brier  recall@10%
+0-10%                           820         0.5073   -13.6%   0.7347   0.7320   0.2192      0.1832
+10-20%                          912         0.5175   -11.8%   0.7322   0.7496   0.2121      0.1797
+20-30%                          973         0.5313    -9.5%   0.7464   0.7789   0.1984      0.1879
+30-40%                          980         0.5878     0.1%   0.6853   0.7467   0.2132      0.2010
+40-50%                          925         0.6076     3.5%   0.6608   0.7285   0.2193      0.1953
+50-60%                          921         0.6048     3.0%   0.6558   0.7373   0.2173      0.1909
+60-70%                          887         0.6246     6.4%   0.6398   0.7354   0.2147      0.1976
+70-80%                          873         0.6025     2.6%   0.6855   0.7654   0.2028      0.2235
+80-90%                          809         0.6292     7.2%   0.6016   0.7186   0.2258      0.1951
+90-100%                         747         0.6372     8.5%   0.6151   0.7578   0.1970      0.2056
+__NULL__                        366         0.6667    13.6%   0.5700   0.7313   0.1816      0.2286
 
 --- age_band ---
-value                             n  flag     cost   AUC-PR  AUC-ROC    Brier  recall@10%
-0-35                           6312         0.5692   0.6955   0.7515   0.2123      0.1959
-35-55                          2814         0.6308   0.6390   0.7436   0.2088      0.2034
-55<=                             87UNDERPWR   0.4713   0.7218   0.8116   0.1654      0.1935
+value                             n  flag     cost     gap%   AUC-PR  AUC-ROC    Brier  recall@10%
+0-35                           6312         0.5692    -3.0%   0.6955   0.7515   0.2123      0.1959
+35-55                          2814         0.6308     7.4%   0.6390   0.7436   0.2088      0.2034
+55<=                             87UNDERPWR   0.4713   -19.7%   0.7218   0.8116   0.1654      0.1935
 
 --- disability ---
-value                             n  flag     cost   AUC-PR  AUC-ROC    Brier  recall@10%
-N                              8358         0.5991   0.6666   0.7471   0.2118      0.2005
-Y                               855         0.4702   0.7764   0.7627   0.2003      0.1685
+value                             n  flag     cost     gap%   AUC-PR  AUC-ROC    Brier  recall@10%
+N                              8358         0.5991     2.0%   0.6666   0.7471   0.2118      0.2005
+Y                               855         0.4702   -19.9%   0.7764   0.7627   0.2003      0.1685
 
 --- gender ---
-value                             n  flag     cost   AUC-PR  AUC-ROC    Brier  recall@10%
-F                              3872         0.6206   0.6003   0.6937   0.2416      0.1906
-M                              5341         0.5628   0.7479   0.7929   0.1884      0.2046
+value                             n  flag     cost     gap%   AUC-PR  AUC-ROC    Brier  recall@10%
+F                              3872         0.6206     5.7%   0.6003   0.6937   0.2416      0.1906
+M                              5341         0.5628    -4.1%   0.7479   0.7929   0.1884      0.2046
 
 
 6. Trivial policy comparison, test, frozen threshold vs counterfactual test-optimal threshold
@@ -388,9 +391,9 @@ The test-optimal threshold is reported for comparison only. It is not adopted an
 8. Declared outcomes (Section 13)
 =================================
 
-O1/O2 are decided by the bootstrap interval (no free parameter). O3/O4 and O5/O6 require a judgment of 'close' vs 'substantially worse' and 'sharp' degradation; the protocol does not fix numeric conventions for these (unlike D1's PSI thresholds in Section 10). Stated here as explicit, arbitrary conventions rather than left implicit: O3/O4 threshold at 10% relative AUC-PR drop, O5/O6 threshold at 15% relative expected-cost degradation. A reader who disagrees with these can read the raw percentages above and redraw the line.
+O1/O2 are decided by the bootstrap interval (no free parameter). O3/O4 and O5 require a judgment of 'close' vs 'substantially worse' and 'sharp' degradation; the protocol does not fix numeric conventions for these (unlike D1's PSI thresholds in Section 10). Stated here as explicit, arbitrary conventions rather than left implicit: O3/O4 threshold at 10% relative AUC-PR drop, O5 threshold at 15% relative expected-cost degradation. A reader who disagrees with these can read the raw percentages above and redraw the line. O6 is not decided by any convention: it is reported as undetermined, for the reason given in the O6 block below.
 
-O2 MET: at D=28, M1 vs B3 expected cost difference is 0.0051, 95% CI [-0.0056, 0.0167] does not exclude zero (or does not favour M1). Gradient boosting is not shown to be warranted over regularised logistic regression here.
+O2 MET: at D=28, the M1 - B3 expected cost difference is -0.0051, 95% CI [-0.0167, 0.0056] does not exclude zero (or does not favour M1). Gradient boosting is not shown to be warranted over regularised logistic regression here.
 
 D=14 selected model (B3) expected cost = 0.5790, AUC-PR = 0.6363. D=28 selected model (M1) expected cost = 0.5871, AUC-PR = 0.6794.
 Cost at D=14 is -1.4% relative to D=28. AUC-PR drops 6.3% from D=28 to D=14.
@@ -399,8 +402,30 @@ O3 MET: performance at D=14 is close to D=28 (AUC-PR drop under 10%). Early acti
 D=28 selected model validate expected cost = 0.5047, test expected cost = 0.5871 (+16.3%).
 O5 MET: test performance degrades sharply relative to validate. Reported as drift per Section 10.
 
-Worst-performing slice at D=28: imd_band='__NULL__' (n=366), expected cost=0.6667 vs overall 0.5871 (+13.6%).
-O6 NOT MET: no slice shows materially worse performance at D=28 by this comparison.
+O6, slice performance at D=28, model M1. Every slice reported in Section 5, with its expected cost as a percentage of the overall figure (0.5871 on the whole test split). Ranked by gap, worst first. Expected cost is a loss, so a positive gap is a slice doing worse than the cohort overall and a negative gap is one doing better.
+
+slice                                         n      flag     cost     gap%
+imd_band=__NULL__                           366             0.6667    13.6%
+imd_band=90-100%                            747             0.6372     8.5%
+age_band=35-55                             2814             0.6308     7.4%
+imd_band=80-90%                             809             0.6292     7.2%
+imd_band=60-70%                             887             0.6246     6.4%
+gender=F                                   3872             0.6206     5.7%
+imd_band=40-50%                             925             0.6076     3.5%
+imd_band=50-60%                             921             0.6048     3.0%
+imd_band=70-80%                             873             0.6025     2.6%
+disability=N                               8358             0.5991     2.0%
+imd_band=30-40%                             980             0.5878     0.1%
+age_band=0-35                              6312             0.5692    -3.0%
+gender=M                                   5341             0.5628    -4.1%
+imd_band=20-30%                             973             0.5313    -9.5%
+imd_band=10-20%                             912             0.5175   -11.8%
+imd_band=0-10%                              820             0.5073   -13.6%
+age_band=55<=                                87  UNDERPWR   0.4713   -19.7%
+disability=Y                                855             0.4702   -19.9%
+
+Section 8 of the protocol makes slice reporting mandatory but does not define materiality: it fixes no threshold, no metric and no comparison rule at which a slice gap counts as 'materially worse' for the purposes of O6. Nothing in the pre-registered document supplies one. A criterion chosen now, with these numbers already in view, would be a criterion selected in knowledge of the result, which is the practice this protocol exists to prevent. None is supplied here, and the earlier version of this report, which decided O6 against a 15% convention introduced after the fact, is withdrawn.
+O6 UNDETERMINED: the gaps above are reported as measured. Whether any of them is materially worse in the sense of O6 cannot be decided against the protocol as pre-registered, so O6 is reported as neither met nor not met. A reader who holds a materiality standard of their own can apply it to the table above.
 
 Test split integrity: guard-verified hyperparameters matched frozen_threshold.json at every cutoff. PASS
 
