@@ -679,3 +679,22 @@ The original run is retained in git history.
 *Why it was missed:* the feature was specified from the data schema without
 checking its behaviour against the temporal split. Found by reading the fitted
 coefficients in the Stage 4 report, not by any automated check.
+
+### A7. Sections 11 and 15 reduced in scope
+
+**Amends:** Section 11, and the serving endpoint in Section 15.
+
+Section 11 specifies four explainability components. Only E1 (global SHAP
+importance, compared against logistic coefficients) is implemented. E2 (local
+reason strings), E3 (counterfactual sanity check) and E4 (demographic
+contribution) are dropped.
+
+The single prediction endpoint described in Section 15 as a lifecycle
+demonstration is also dropped.
+
+*Reason:* scope reduction, decided after Stage 5. None of the dropped items
+bears on any declared outcome in Section 13, and the drift analysis in Section
+10 became the higher priority once Stage 5 found discrimination degrading
+between presentations. E3's substantive point, that SHAP explains the model
+rather than the world, is retained as a written caveat in the Stage 8 write-up
+rather than as an analysis.

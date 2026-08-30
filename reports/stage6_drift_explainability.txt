@@ -1,0 +1,439 @@
+Stage 6 Drift and Explainability Report
+Scope: Section 10 D1-D4 and Section 11 E1 only. E2, E3 and E4 are out of scope for this stage; see the closing note.
+frozen_threshold.json git_commit_at_generation: be2e328041378840314fde74995d099670aa6951
+
+1. Inputs and integrity
+=======================
+
+The holdout is open and its results are fixed. Nothing in this stage refits a model, recomputes a threshold, adjusts a calibration or corrects a drift. No .fit() is called on any model or preprocessor.
+
+  Feature table                  features_d28
+  Train split (2013B + 2013J)    n = 11806
+  Validate split (2014B)         n = 6511
+  Test split (2014J)             n = 9213
+  Test predictions               stage5_test_predictions.parquet, n = 9213 (read, not recomputed)
+  Selected model at D=28         M1 (lowest validate expected cost, frozen at Stage 4)
+
+  SHAP integrity check: the M1 contributions below are LightGBM's own TreeSHAP (booster.predict(pred_contrib=True)), so no additional package is involved. Summing each row's contributions and applying the logistic link reproduces the Stage 5 stored probabilities to 8.88e-16 maximum absolute deviation. The model is therefore the frozen one and the predictions are unchanged.
+
+
+2. D1. Feature drift: Population Stability Index, train against test, D=28
+==========================================================================
+
+PSI = sum over bins of (p_test - p_train) * ln(p_test / p_train), computed on the 28 protocol features of Section 6, not on the 72 design-matrix columns the model sees.
+Numeric features: 10 quantile bins with edges taken from the TRAIN distribution and applied unchanged to test, the outer edges opened to -inf / +inf so test values beyond the training range fall in the end bins. Heavily tied features collapse adjacent quantiles onto the same edge; duplicate edges are dropped and the realised bin count is reported in 'bins' rather than claimed to be 10. Nulls are carried as their own bin rather than imputed, since missingness is itself something that can drift.
+Categorical features: the categories themselves, with null carried as its own category.
+Empty bins: a bin with no rows on one side sends its term to infinity, so a zero proportion is replaced by the small constant 0.0001. That is the usual convention in industry practice: one hundredth of one percent of the population, below any proportion these splits can resolve (the smallest split here holds 6511 rows, so a single row is a larger proportion than the constant). The 'empty' column counts bins empty on exactly one side, which are the only ones the constant affects — a bin empty on both sides, such as the null bin of a feature that has no nulls anywhere, contributes exactly zero whatever constant is chosen. The substitution bounds the term rather than making it meaningful: where it fires, the value depends on the constant as much as on the data, and the sensitivity table below the ranking shows by how much.
+One further caveat on resolution: a heavily tied feature realises far fewer than 10 bins (see the 'bins' column), and a feature measured in 2 or 3 bins can only register coarse movement. A low PSI on such a feature is weaker evidence of stability than the same number on a feature binned into 10.
+Bands: below 0.1 stable, 0.1 to 0.25 moderate, above 0.25 significant. THIS IS A CONVENTION FROM INDUSTRY PRACTICE, NOT A THRESHOLD FROM THIS PROTOCOL. Section 10 D1 names it and says as much: 'The convention is stated as a convention, not a law.' It is the one numeric reading in this report that the protocol did pre-register, and it is still only a convention.
+
+rank  feature                         kind               PSI         band   bins  empty  SHAP rank
+1     code_module                     categorical     1.7967  significant      7      1          7
+2     assessment_material_share       numeric         0.3237  significant      7      0         19
+3     mean_score_submitted            numeric         0.2902  significant     10      0          8
+4     min_score_submitted             numeric         0.2597  significant     10      0          6
+5     mean_submission_lateness        numeric         0.2303     moderate      7      0          5
+6     score_percentile                numeric         0.2138     moderate     10      0          2
+7     distinct_activity_types         numeric         0.1550     moderate      8      0         25
+8     distinct_materials              numeric         0.1145     moderate     10      0         22
+9     n_assessments_submitted         numeric         0.0625       stable      3      0         28
+10    days_registered_before_start    numeric         0.0555       stable     10      0         20
+11    longest_activity_gap            numeric         0.0492       stable      9      0         26
+12    second_half_click_ratio         numeric         0.0391       stable     10      0         18
+13    studied_credits                 numeric         0.0352       stable      4      0         16
+14    total_clicks                    numeric         0.0225       stable     10      0         27
+15    clicks_last_7d                  numeric         0.0204       stable      8      0         12
+16    active_days                     numeric         0.0196       stable     10      0         10
+17    region                          categorical     0.0193       stable     13      0         15
+18    click_slope_daily               numeric         0.0186       stable     10      0         24
+19    gender                          categorical     0.0156       stable      2      0         23
+20    days_since_last_activity        numeric         0.0153       stable      6      0         11
+21    highest_education               categorical     0.0139       stable      5      0          4
+22    mean_clicks_per_active_day      numeric         0.0087       stable     10      0         13
+23    n_due_not_submitted             numeric         0.0086       stable      2      0          1
+24    num_of_prev_attempts            numeric         0.0034       stable      2      0         17
+25    imd_band                        categorical     0.0032       stable     11      0          9
+26    age_band                        categorical     0.0017       stable      3      0         14
+27    clicks_percentile               numeric         0.0002       stable     10      0          3
+28    disability                      categorical     0.0001       stable      2      0         21
+
+Sensitivity of the affected features to the empty-bin constant. Only features with a bin empty on exactly one side appear; every other feature's PSI is unchanged by the choice.
+  feature                           eps=1e-3  eps=1e-4  eps=1e-6  (1e-4 is the value used)
+  code_module                         1.2872    1.7967    2.8072
+  A feature whose PSI swings across these columns is being scored on the absence of a category or range from one split, not on a measured shift in its distribution. The band it lands in is then a property of the constant.
+
+Bin detail for the 5 highest-PSI features:
+
+--- code_module (PSI=1.7967, categorical) ---
+  bin                                    train      test      term
+  AAA                                   0.0313    0.0378    0.0012
+  BBB                                   0.2849    0.1939    0.0350
+  CCC                                   0.0000    0.2193    1.6859  <- empty on one side, constant substituted
+  DDD                                   0.2362    0.1588    0.0307
+  EEE                                   0.0784    0.1107    0.0111
+  FFF                                   0.2910    0.2018    0.0327
+  GGG                                   0.0783    0.0778    0.0000
+
+--- assessment_material_share (PSI=0.3237, numeric) ---
+  bin                                    train      test      term
+  [-inf, 0.001639)                      0.4000    0.3757    0.0015
+  [0.001639, 0.006667)                  0.0997    0.0656    0.0143
+  [0.006667, 0.01274)                   0.1004    0.0568    0.0249
+  [0.01274, 0.02676)                    0.0999    0.0482    0.0378
+  [0.02676, 0.08877)                    0.0999    0.0566    0.0247
+  [0.08877, 0.1931)                     0.1000    0.0968    0.0001
+  [0.1931, +inf)                        0.1000    0.3004    0.2204
+  __NULL__                              0.0000    0.0000    0.0000
+
+--- mean_score_submitted (PSI=0.2902, numeric) ---
+  bin                                    train      test      term
+  [-inf, 56)                            0.0709    0.1311    0.0370
+  [56, 64)                              0.0717    0.0434    0.0142
+  [64, 69)                              0.0695    0.0570    0.0025
+  [69, 73)                              0.0720    0.0345    0.0276
+  [73, 76)                              0.0631    0.0289    0.0268
+  [76, 80)                              0.0799    0.0594    0.0061
+  [80, 83.5)                            0.0866    0.0453    0.0268
+  [83.5, 87)                            0.0740    0.0435    0.0162
+  [87, 91)                              0.0737    0.0824    0.0010
+  [91, +inf)                            0.0736    0.2034    0.1319
+  __NULL__                              0.2650    0.2711    0.0001
+
+--- min_score_submitted (PSI=0.2597, numeric) ---
+  bin                                    train      test      term
+  [-inf, 54)                            0.0693    0.1231    0.0309
+  [54, 63)                              0.0765    0.0545    0.0075
+  [63, 68)                              0.0652    0.0549    0.0018
+  [68, 72)                              0.0686    0.0328    0.0265
+  [72, 76)                              0.0873    0.0399    0.0371
+  [76, 79)                              0.0691    0.0608    0.0011
+  [79, 82)                              0.0606    0.0335    0.0160
+  [82, 86)                              0.0846    0.0447    0.0254
+  [86, 90)                              0.0673    0.0723    0.0004
+  [90, +inf)                            0.0865    0.2123    0.1130
+  __NULL__                              0.2650    0.2711    0.0001
+
+--- mean_submission_lateness (PSI=0.2303, numeric) ---
+  bin                                    train      test      term
+  [-inf, -19)                           0.0731    0.0594    0.0029
+  [-19, -4)                             0.0631    0.1088    0.0249
+  [-4, -2)                              0.0751    0.0608    0.0030
+  [-2, -1)                              0.0817    0.0660    0.0033
+  [-1, 0)                               0.1869    0.1292    0.0213
+  [0, 1)                                0.1799    0.1004    0.0464
+  [1, +inf)                             0.0756    0.2045    0.1284
+  __NULL__                              0.2647    0.2710    0.0001
+
+
+3. D1 continued. Drift against model importance
+===============================================
+
+Stage 5 found discrimination fell from validate to test: M1 AUC-PR 0.7870 to 0.6794, B3 0.7843 to 0.6106. The question this section answers is a descriptive one: are the features that moved most between train and test the same features the model leans on most?
+NO CAUSAL CLAIM IS MADE. PSI measures a change in a feature's marginal distribution. It says nothing about whether the relationship between that feature and the outcome changed, which is what would actually degrade a model, and a feature can move a great deal without costing any accuracy while a stable feature whose conditional relationship shifted costs a lot. The overlap below is reported as an observation, not as an explanation of the Stage 5 result.
+
+rank  by PSI                                PSI   by SHAP mean |contribution|          SHAP
+1     code_module                        1.7967   n_due_not_submitted                0.3652
+2     assessment_material_share          0.3237   score_percentile                   0.2821
+3     mean_score_submitted               0.2902   clicks_percentile                  0.2761
+4     min_score_submitted                0.2597   highest_education                  0.2275
+5     mean_submission_lateness           0.2303   mean_submission_lateness           0.2084
+6     score_percentile                   0.2138   min_score_submitted                0.1277
+7     distinct_activity_types            0.1550   code_module                        0.1047
+8     distinct_materials                 0.1145   mean_score_submitted               0.1003
+9     n_assessments_submitted            0.0625   imd_band                           0.0897
+10    days_registered_before_start       0.0555   active_days                        0.0740
+11    longest_activity_gap               0.0492   days_since_last_activity           0.0702
+12    second_half_click_ratio            0.0391   clicks_last_7d                     0.0695
+13    studied_credits                    0.0352   mean_clicks_per_active_day         0.0470
+14    total_clicks                       0.0225   age_band                           0.0289
+15    clicks_last_7d                     0.0204   region                             0.0264
+16    active_days                        0.0196   studied_credits                    0.0236
+17    region                             0.0193   num_of_prev_attempts               0.0183
+18    click_slope_daily                  0.0186   second_half_click_ratio            0.0175
+19    gender                             0.0156   assessment_material_share          0.0172
+20    days_since_last_activity           0.0153   days_registered_before_start       0.0150
+21    highest_education                  0.0139   disability                         0.0141
+22    mean_clicks_per_active_day         0.0087   distinct_materials                 0.0128
+23    n_due_not_submitted                0.0086   gender                             0.0094
+24    num_of_prev_attempts               0.0034   click_slope_daily                  0.0082
+25    imd_band                           0.0032   distinct_activity_types            0.0048
+26    age_band                           0.0017   longest_activity_gap               0.0046
+27    clicks_percentile                  0.0002   total_clicks                       0.0039
+28    disability                         0.0001   n_assessments_submitted            0.0030
+
+Top 5 by PSI and top 5 by SHAP importance share 1 of 5 features: mean_submission_lateness.
+Top 10 by PSI and top 10 by SHAP importance share 5 of 10 features: code_module, mean_score_submitted, min_score_submitted, mean_submission_lateness, score_percentile.
+
+
+4. D2 and D3. Base rate drift and exclusion drift, D=28
+=======================================================
+
+Brought forward from reports/stage2_cohort.txt so the drift picture sits in one place. Recomputed from the cohort and feature tables by the same SQL Stage 2 used, not retyped.
+
+D2, non-completion rate per presentation (95% Wilson interval):
+  presentation   split             n  base_rate            [95% CI]
+  2013B          train          4123     0.4924     [0.4771,0.5076]
+  2013J          train          7683     0.4178     [0.4068,0.4289]
+  2014B          validate       6511     0.4844     [0.4723,0.4966]
+  2014J          test           9213     0.4079     [0.3979,0.4180]
+
+D2, non-completion rate per module-presentation (95% Wilson interval):
+  module  presentation   split             n  base_rate            [95% CI]
+  AAA     2013J          train           369     0.2466     [0.2054,0.2931]
+  AAA     2014J          test            348     0.2730     [0.2289,0.3221]
+  BBB     2013B          train          1529     0.4755     [0.4505,0.5005]
+  BBB     2013J          train          1834     0.4160     [0.3937,0.4387]
+  BBB     2014B          validate       1280     0.4320     [0.4051,0.4593]
+  BBB     2014J          test           1786     0.3555     [0.3337,0.3780]
+  CCC     2014B          validate       1500     0.5580     [0.5328,0.5830]
+  CCC     2014J          test           2020     0.4980     [0.4762,0.5198]
+  DDD     2013B          train          1141     0.5539     [0.5249,0.5825]
+  DDD     2013J          train          1647     0.4973     [0.4732,0.5214]
+  DDD     2014B          validate       1028     0.5350     [0.5045,0.5653]
+  DDD     2014J          test           1463     0.4586     [0.4333,0.4843]
+  EEE     2013J          train           926     0.3423     [0.3125,0.3735]
+  EEE     2014B          validate        605     0.4099     [0.3714,0.4496]
+  EEE     2014J          test           1020     0.3294     [0.3013,0.3588]
+  FFF     2013B          train          1453     0.4618     [0.4363,0.4875]
+  FFF     2013J          train          1983     0.4478     [0.4260,0.4698]
+  FFF     2014B          validate       1301     0.4973     [0.4702,0.5244]
+  FFF     2014J          test           1859     0.3991     [0.3771,0.4216]
+  GGG     2013J          train           924     0.3593     [0.3290,0.3908]
+  GGG     2014B          validate        797     0.4003     [0.3668,0.4347]
+  GGG     2014J          test            717     0.3808     [0.3459,0.4168]
+
+D3, share of students removed by exclusion E1, per presentation, at D=28:
+  Share = (rows entering E1 minus rows surviving E1) / rows entering E1, i.e. the share of the E2-surviving population that had already left by the cutoff.
+  presentation     entering E1  surviving  removed    share
+  2013B                   4672       4123      549   0.1175
+  2013J                   8832       7683     1149   0.1301
+  2014B                   7782       6511     1271   0.1633
+  2014J                  11246       9213     2033   0.1808
+
+Per Section 3, E1 removes students whose unregistration is already recorded before the cutoff. Per Section 10 D3, a materially different share removed in the test presentation means the prediction task is not the same task. The shares are reported as measured; the protocol fixes no threshold for what counts as materially different, so no verdict is drawn here.
+
+
+5. D4. Performance decomposition by module, test, D=28, model M1
+================================================================
+
+AUC-PR is not comparable across groups with different prevalence: a random ranker scores the base rate. Each module's base rate and the ratio of its AUC-PR to that base rate are therefore printed alongside, so a module is not read as weak merely for having fewer non-completers. B3 is shown next to M1 because a module that is hard for both models is a different finding from one where the two disagree.
+
+  module    n_test    base  M1 AUC-PR   ratio  M1 Brier  B3 AUC-PR  n_train   n_val  flag
+  AAA          348  0.2730     0.5496    2.01    0.1833     0.5361      369       0  
+  BBB         1786  0.3555     0.5572    1.57    0.3046     0.4477     3363    1280  
+  CCC         2020  0.4980     0.8038    1.61    0.1870     0.8048        0    1500  THIN TRAIN (< 200 rows in train split)
+  DDD         1463  0.4586     0.7719    1.68    0.1889     0.7729     2788    1028  
+  EEE         1020  0.3294     0.6699    2.03    0.1780     0.6490      926     605  
+  FFF         1859  0.3991     0.7433    1.86    0.1849     0.7399     3436    1301  
+  GGG          717  0.3808     0.5781    1.52    0.2155     0.5942      924     797  
+  ALL         9213  0.4079     0.6794    1.67    0.2108     0.6106    11806    6511
+
+Section 4 declares in advance that modules present in the test presentation with fewer than 200 training rows are reported separately rather than dropped, because dropping them would hide the generalisation problem a deployment hits when a new module launches. Counted against the train split (2013B + 2013J), which is what Section 4's 'training rows' refers to at the point that rule was written:
+  CCC: 0 rows in the train split, 1500 in validate, 2020 in test (21.9% of the test split). AUC-PR 0.8038 against a base rate of 0.4980.
+  Note the refit rule in Section 4: the scored model was refit on train + validate, so a module absent from the train split may still have been seen at refit through 2014B. Both counts are printed above for that reason.
+
+AUC-PR spread across modules: 0.2542, from AAA at 0.5496 (base rate 0.2730) to CCC at 0.8038 (base rate 0.4980). Measured against each module's own base rate, the ratio runs from 1.52 (GGG) to 2.03 (EEE), against 1.67 pooled.
+Brier spread: EEE at 0.1780 to BBB at 0.3046, against 0.2108 pooled. BBB sits +44.5% from the pooled Brier while every other module lies between -15.5% and +2.3% of it.
+That does not coincide with the weakest ranking. BBB is not thin in training (3363 train-split rows), and it is neither the lowest module by AUC-PR (AAA) nor the lowest by AUC-PR relative to its own base rate (GGG), so on this decomposition its calibration and its ranking are not moving together.
+Whether that spread is concentrated or diffuse is left to the numbers above: the protocol fixes no threshold at which a module counts as an outlier, and none is invented here. What the decomposition does separate is the two explanations Section 10 D4 exists to tell apart — a module with thin or absent training representation is a different case from a module the model saw well and still ranks poorly, and the n_train column says which is which.
+
+
+6. E1. Global explainability: M1 SHAP against B3 coefficients, test, D=28
+=========================================================================
+
+M1 importance is the mean absolute TreeSHAP contribution on the test split, in log-odds. A protocol feature spans several design columns — one per level for a categorical, plus a was_missing_ indicator for a numeric that had nulls in the fit data — so a row's contribution for a feature is the SIGNED sum across its columns and the importance is the mean of the absolute value of that sum. Summing absolute values per column instead would inflate wide one-hot groups by counting contributions that cancel.
+
+  rank  feature                           mean |SHAP|  PSI rank
+  1     n_due_not_submitted                    0.3652        23
+  2     score_percentile                       0.2821         6
+  3     clicks_percentile                      0.2761        27
+  4     highest_education                      0.2275        21
+  5     mean_submission_lateness               0.2084         5
+  6     min_score_submitted                    0.1277         4
+  7     code_module                            0.1047         1
+  8     mean_score_submitted                   0.1003         3
+  9     imd_band                               0.0897        25
+  10    active_days                            0.0740        16
+  11    days_since_last_activity               0.0702        20
+  12    clicks_last_7d                         0.0695        15
+  13    mean_clicks_per_active_day             0.0470        22
+  14    age_band                               0.0289        26
+  15    region                                 0.0264        17
+  16    studied_credits                        0.0236        13
+  17    num_of_prev_attempts                   0.0183        24
+  18    second_half_click_ratio                0.0175        12
+  19    assessment_material_share              0.0172         2
+  20    days_registered_before_start           0.0150        10
+  21    disability                             0.0141        28
+  22    distinct_materials                     0.0128         8
+  23    gender                                 0.0094        19
+  24    click_slope_daily                      0.0082        18
+  25    distinct_activity_types                0.0048         7
+  26    longest_activity_gap                   0.0046        11
+  27    total_clicks                           0.0039        14
+  28    n_assessments_submitted                0.0030         9
+
+B3 coefficients are from the same frozen refit, on the same design matrix. Numeric columns are standardised, so a numeric coefficient is a log-odds change per training standard deviation, while a one-hot coefficient is a log-odds change for membership of that category against the regularised average. The two units are not the same thing, which limits how far the two halves of this ranking can be compared with each other.
+
+  rank  design column                                     coefficient
+  1     code_module__AAA                                      -0.6994
+  2     code_module__FFF                                      +0.6908
+  3     code_module__GGG                                      -0.5484
+  4     n_due_not_submitted                                   +0.5200
+  5     imd_band____NULL__                                    -0.5141
+  6     mean_score_submitted                                  -0.5001
+  7     code_module__DDD                                      +0.4399
+  8     highest_education__No Formal quals                    +0.4249
+  9     was_missing_mean_clicks_per_active_day                +0.3904
+  10    was_missing_days_since_last_activity                  +0.3904
+  11    code_module__CCC                                      +0.3476
+  12    highest_education__HE Qualification                   -0.3397
+  13    imd_band__0-10%                                       +0.3344
+  14    code_module__BBB                                      -0.3153
+  15    highest_education__Lower Than A Level                 +0.3066
+  16    highest_education__A Level or Equivalent              -0.2673
+  17    imd_band__10-20%                                      +0.2567
+  18    highest_education__Post Graduate Qualification        -0.2419
+  19    active_days                                           -0.2171
+  20    imd_band__90-100%                                     -0.2163
+  21    imd_band__20-30%                                      +0.2127
+  22    region__Wales                                         +0.1835
+  23    clicks_percentile                                     -0.1801
+  24    age_band__55<=                                        -0.1782
+  25    region__South West Region                             -0.1761
+  26    disability__N                                         -0.1695
+  27    days_since_last_activity                              +0.1609
+  28    min_score_submitted                                   -0.1544
+  29    region__South Region                                  -0.1522
+  30    region__Scotland                                      +0.1341
+  31    region__South East Region                             -0.1328
+  32    imd_band__80-90%                                      -0.1280
+  33    mean_clicks_per_active_day                            +0.1269
+  34    imd_band__60-70%                                      -0.1168
+  35    region__North Western Region                          +0.1151
+  36    mean_submission_lateness                              +0.1122
+  37    clicks_last_7d                                        -0.0928
+  38    studied_credits                                       +0.0891
+  39    age_band__0-35                                        +0.0872
+  40    was_missing_longest_activity_gap                      -0.0781
+  41    num_of_prev_attempts                                  +0.0704
+  42    region__North Region                                  -0.0702
+  43    gender__F                                             -0.0690
+  44    second_half_click_ratio                               +0.0640
+  45    assessment_material_share                             -0.0619
+  46    region__London Region                                 -0.0606
+  47    was_missing_second_half_click_ratio                   +0.0586
+  48    imd_band__40-50%                                      +0.0585
+  49    was_missing_mean_score_submitted                      +0.0545
+  50    was_missing_min_score_submitted                       +0.0545
+  51    was_missing_score_percentile                          +0.0545
+  52    distinct_activity_types                               -0.0527
+  53    disability__Y                                         +0.0520
+  54    distinct_materials                                    -0.0507
+  55    gender__M                                             -0.0484
+  56    region__East Anglian Region                           -0.0444
+  57    region__East Midlands Region                          +0.0402
+  58    region__Yorkshire Region                              +0.0396
+  59    was_missing_mean_submission_lateness                  -0.0355
+  60    imd_band__70-80%                                      -0.0335
+  61    code_module__EEE                                      -0.0326
+  62    score_percentile                                      +0.0304
+  63    age_band__35-55                                       -0.0265
+  64    days_registered_before_start                          -0.0248
+  65    total_clicks                                          +0.0188
+  66    imd_band__50-60%                                      +0.0162
+  67    region__West Midlands Region                          +0.0143
+  68    n_assessments_submitted                               +0.0130
+  69    imd_band__30-40%                                      +0.0128
+  70    region__Ireland                                       -0.0080
+  71    click_slope_daily                                     -0.0036
+  72    longest_activity_gap                                  -0.0030
+
+Where the two disagree. Both are ranked over the same 72 design columns: M1 by mean absolute SHAP contribution, B3 by absolute coefficient. Every column is listed, sorted by the size of the rank gap. Section 11 E1 asks for material disagreement to be reported and not resolved; it defines no threshold for 'material', and none is supplied here, so the full ranking is given and the reader draws the line.
+21 of the 72 columns have a mean absolute SHAP contribution of exactly zero: the boosted trees never split on them anywhere in the ensemble, so they enter no prediction at all. Several of them carry large B3 coefficients — the highest-ranked by |coefficient| sit at B3 ranks 3, 9, 10, 11, 18 — which is the sharpest form the disagreement takes here: a column the linear model relies on and the gradient-boosted model does not use.
+
+  design column                                     M1 rank  B3 rank   gap  mean |SHAP|      coef
+  code_module__GGG                                       72        3   +69       0.0000   -0.5484
+  score_percentile                                        2       62   -60       0.2821   +0.0304
+  code_module__CCC                                       71       11   +60       0.0000   +0.3476
+  highest_education__Post Graduate Qualification         65       18   +47       0.0000   -0.2419
+  age_band__55<=                                         69       24   +45       0.0000   -0.1782
+  was_missing_mean_clicks_per_active_day                 52        9   +43       0.0000   +0.3904
+  was_missing_days_since_last_activity                   53       10   +43       0.0000   +0.3904
+  days_registered_before_start                           26       64   -38       0.0150   -0.0248
+  click_slope_daily                                      34       71   -37       0.0082   -0.0036
+  highest_education__HE Qualification                    48       12   +36       0.0005   -0.3397
+  highest_education__A Level or Equivalent               50       16   +34       0.0003   -0.2673
+  code_module__EEE                                       27       61   -34       0.0142   -0.0326
+  longest_activity_gap                                   40       72   -32       0.0046   -0.0030
+  mean_submission_lateness                                5       36   -31       0.2084   +0.1122
+  region__South East Region                              62       31   +31       0.0000   -0.1328
+  age_band__35-55                                        33       63   -30       0.0087   -0.0265
+  highest_education__No Formal quals                     37        8   +29       0.0069   +0.4249
+  clicks_last_7d                                         10       37   -27       0.0695   -0.0928
+  n_assessments_submitted                                42       68   -26       0.0030   +0.0130
+  distinct_materials                                     29       54   -25       0.0128   -0.0507
+  total_clicks                                           41       65   -24       0.0039   +0.0188
+  min_score_submitted                                     6       28   -22       0.1277   -0.1544
+  mean_clicks_per_active_day                             12       33   -21       0.0470   +0.1269
+  second_half_click_ratio                                24       44   -20       0.0175   +0.0640
+  assessment_material_share                              25       45   -20       0.0172   -0.0619
+  clicks_percentile                                       3       23   -20       0.2761   -0.1801
+  num_of_prev_attempts                                   22       41   -19       0.0183   +0.0704
+  studied_credits                                        19       38   -19       0.0236   +0.0891
+  days_since_last_activity                                9       27   -18       0.0702   +0.1609
+  age_band__0-35                                         21       39   -18       0.0203   +0.0872
+  disability__Y                                          70       53   +17       0.0000   +0.0520
+  was_missing_longest_activity_gap                       55       40   +15       0.0000   -0.0781
+  code_module__AAA                                       16        1   +15       0.0317   -0.6994
+  distinct_activity_types                                39       52   -13       0.0048   -0.0527
+  imd_band__80-90%                                       44       32   +12       0.0016   -0.1280
+  imd_band____NULL__                                     17        5   +12       0.0286   -0.5141
+  code_module__FFF                                       14        2   +12       0.0381   +0.6908
+  active_days                                             8       19   -11       0.0740   -0.2171
+  gender__F                                              32       43   -11       0.0094   -0.0690
+  region__South West Region                              36       25   +11       0.0079   -0.1761
+  highest_education__Lower Than A Level                   4       15   -11       0.2238   +0.3066
+  imd_band__60-70%                                       45       34   +11       0.0012   -0.1168
+  region__Ireland                                        61       70    -9       0.0000   -0.0080
+  region__Wales                                          31       22    +9       0.0103   +0.1835
+  region__Scotland                                       38       30    +8       0.0051   +0.1341
+  imd_band__70-80%                                       68       60    +8       0.0000   -0.0335
+  was_missing_second_half_click_ratio                    54       47    +7       0.0000   +0.0586
+  was_missing_score_percentile                           58       51    +7       0.0000   +0.0545
+  was_missing_mean_score_submitted                       43       49    -6       0.0023   +0.0545
+  was_missing_min_score_submitted                        56       50    +6       0.0000   +0.0545
+  region__Yorkshire Region                               64       58    +6       0.0000   +0.0396
+  region__East Anglian Region                            51       56    -5       0.0003   -0.0444
+  gender__M                                              59       55    +4       0.0000   -0.0484
+  region__North Region                                   46       42    +4       0.0009   -0.0702
+  region__West Midlands Region                           63       67    -4       0.0000   +0.0143
+  code_module__DDD                                       11        7    +4       0.0505   +0.4399
+  n_due_not_submitted                                     1        4    -3       0.3652   +0.5200
+  region__East Midlands Region                           60       57    +3       0.0000   +0.0402
+  region__London Region                                  49       46    +3       0.0004   -0.0606
+  imd_band__30-40%                                       66       69    -3       0.0000   +0.0128
+  imd_band__90-100%                                      23       20    +3       0.0178   -0.2163
+  was_missing_mean_submission_lateness                   57       59    -2       0.0000   -0.0355
+  disability__N                                          28       26    +2       0.0141   -0.1695
+  mean_score_submitted                                    7        6    +1       0.1004   -0.5001
+  region__South Region                                   30       29    +1       0.0114   -0.1522
+  imd_band__10-20%                                       18       17    +1       0.0273   +0.2567
+  imd_band__20-30%                                       20       21    -1       0.0209   +0.2127
+  imd_band__40-50%                                       47       48    -1       0.0006   +0.0585
+  imd_band__50-60%                                       67       66    +1       0.0000   +0.0162
+  code_module__BBB                                       15       14    +1       0.0324   -0.3153
+  region__North Western Region                           35       35    +0       0.0081   +0.1151
+  imd_band__0-10%                                        13       13    +0       0.0392   +0.3344
+
+Read with care in both directions. A column ranked high by M1 and low by B3 is one the boosted trees use and the linear model cannot, which is where non-linearity or interaction would show up. A column ranked high by B3 and low by M1 is one the linear model leans on to compensate for structure it cannot represent directly. Neither ranking is the ground truth and the disagreement is reported rather than resolved, per Section 11 E1.
+
+
+7. Scope note: what this stage does not contain
+===============================================
+
+Section 11 declares four explainability items. Only E1 is produced here. E2 (local reason strings for a sample of flagged students), E3 (the counterfactual sanity check stated alongside those reason strings) and E4 (the share of model output attributable to Group A demographic features) are dropped from this stage by instruction, not by finding, and are to be recorded as dropped in a protocol amendment. They are not attempted, not partially attempted, and nothing in this report should be read as standing in for them.
+E3 is worth naming precisely because it is absent. It is the warning that SHAP explains the model and not the world: that inactivity is a symptom, and that a feature driving a flag does not mean acting on that feature changes the outcome. Section 6 predicted in advance that n_due_not_submitted would dominate, and Section 5 of this report can be read as confirming or denying that prediction, but neither that ranking nor the SHAP table above carries any causal content whatsoever. Arm 2 (Section 12) is where a causal question is asked, and it has not run.
+
+Drift is measured and reported here. Per Section 10, no drift correction, no reweighting and no recalibration on test is performed, and none of the numbers above has been used to change anything.
+
