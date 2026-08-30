@@ -30,6 +30,9 @@ ROOT = Path(__file__).resolve().parent.parent
 DB_PATH = ROOT / "data" / "oulad.duckdb"
 MODELS_DIR = ROOT / "models"
 FROZEN_JSON_PATH = ROOT / "reports" / "frozen_threshold.json"
+# Stage 4's validate-side metrics, read only so that Section 8 can state the
+# validate figures a drift comparison needs. Nothing is refit from it.
+STAGE4_RESULTS_PATH = ROOT / "reports" / "stage4_results.joblib"
 REPORT_PATH = ROOT / "reports" / "stage5_holdout.txt"
 PREDICTIONS_PATH = ROOT / "reports" / "stage5_test_predictions.parquet"
 
@@ -373,15 +376,29 @@ def main() -> None:
     out.append("")
 
     # --- 8. Declared outcomes ---
+    stage4 = joblib.load(STAGE4_RESULTS_PATH)
+
     out.append(section("8. Declared outcomes (Section 13)"))
     out.append(
-        "O1/O2 are decided by the bootstrap interval (no free parameter). O3/O4 and O5 require a "
-        "judgment of 'close' vs 'substantially worse' and 'sharp' degradation; the protocol does not fix "
-        "numeric conventions for these (unlike D1's PSI thresholds in Section 10). Stated here as explicit, "
-        "arbitrary conventions rather than left implicit: O3/O4 threshold at 10% relative AUC-PR drop, "
-        "O5 threshold at 15% relative expected-cost degradation. A reader who disagrees with these can "
-        "read the raw percentages above and redraw the line. O6 is not decided by any convention: it is "
-        "reported as undetermined, for the reason given in the O6 block below."
+        "O1/O2 turns on whether a paired bootstrap interval contains zero. That is a criterion the protocol "
+        "does fix — Section 8 pre-commits to interval-separated comparison between ladder rungs, and Section 13 "
+        "words O1 and O2 in those terms — so O1/O2 is decided below."
+    )
+    out.append(
+        "O3, O4, O5 and O6 are not. Section 13 declares them in the language of 'close', 'substantially worse', "
+        "'sharp' degradation and 'materially worse' performance, and neither Section 13 nor any other part of the "
+        "protocol defines what would count as meeting them: no threshold, no metric on which to read one, and no "
+        "comparison rule. Unlike D1's PSI bands in Section 10, nothing was pre-registered here. Earlier versions "
+        "of this report supplied numeric conventions anyway — a 10% relative AUC-PR drop for O3/O4, a 15% relative "
+        "expected-cost degradation for O5 and for O6 — and returned verdicts against them. Each was chosen after "
+        "the results were known, which makes it a cut-off selected with knowledge of what it would decide. All "
+        "three are withdrawn."
+    )
+    out.append(
+        "What follows reports, for each of those outcomes, the underlying numbers and the comparison that bears "
+        "on it, and derives no verdict from an invented cut-off. O3, O4, O5 and O6 are reported as UNDETERMINED "
+        "on the protocol's own terms: the measurements stand, the verdicts are not available. A reader who holds "
+        "a standard of their own can apply it to the numbers below."
     )
     out.append("")
 
@@ -397,35 +414,107 @@ def main() -> None:
                     f"95% CI [{lo:.4f}, {hi:.4f}] does not exclude zero (or does not favour M1). "
                     "Gradient boosting is not shown to be warranted over regularised logistic regression here.")
 
-    cost14 = per_cutoff[14]["rung_results"][per_cutoff[14]["selected_rung"]]["point"]["expected_cost"]
-    cost28 = per_cutoff[28]["rung_results"][per_cutoff[28]["selected_rung"]]["point"]["expected_cost"]
-    aucpr14 = per_cutoff[14]["rung_results"][per_cutoff[14]["selected_rung"]]["point"]["auc_pr"]
-    aucpr28 = per_cutoff[28]["rung_results"][per_cutoff[28]["selected_rung"]]["point"]["auc_pr"]
-    cost_gap_pct = (cost14 - cost28) / cost28 * 100 if cost28 else float("nan")
-    aucpr_drop_pct = (aucpr28 - aucpr14) / aucpr28 * 100 if aucpr28 else float("nan")
+    sel14 = per_cutoff[14]["selected_rung"]
+    sel28 = per_cutoff[28]["selected_rung"]
+
+    def test_point(D: int, rung: str, key: str) -> float:
+        return per_cutoff[D]["rung_results"][rung]["point"][key]
+
+    cost28 = test_point(28, sel28, "expected_cost")
     out.append("")
+    out.append("O3/O4, timeliness. Day 14 against day 28, both on test, at the frozen thresholds.")
     out.append(
-        f"D=14 selected model ({per_cutoff[14]['selected_rung']}) expected cost = {cost14:.4f}, AUC-PR = {aucpr14:.4f}. "
-        f"D=28 selected model ({per_cutoff[28]['selected_rung']}) expected cost = {cost28:.4f}, AUC-PR = {aucpr28:.4f}."
+        f"The cost-selected model differs between the two cutoffs ({sel14} at D=14, {sel28} at D=28), which "
+        "confounds the cutoff with the model choice, so the same comparison is also given with the model held "
+        "fixed. change is D=14 relative to D=28: lower is better for expected cost and Brier, higher is better "
+        "for AUC-PR and recall@10%."
     )
-    out.append(f"Cost at D=14 is {cost_gap_pct:+.1f}% relative to D=28. AUC-PR drops {aucpr_drop_pct:.1f}% from D=28 to D=14.")
-    if aucpr_drop_pct < 10:
-        out.append("O3 MET: performance at D=14 is close to D=28 (AUC-PR drop under 10%). Early action costs little.")
-    else:
-        out.append("O4 MET: performance at D=14 is substantially worse than D=28. The timeliness cost is real and quantified above.")
+    out.append("")
+    out.append(f"{'basis':<26}{'metric':<16}{'D=14':>9}{'D=28':>9}{'change':>10}")
+    o34_bases = [
+        (f"selected ({sel14} / {sel28})", sel14, sel28),
+        ("B3 at both cutoffs", "B3", "B3"),
+        ("M1 at both cutoffs", "M1", "M1"),
+    ]
+    o34_metrics = [
+        ("expected cost", "expected_cost"), ("AUC-PR", "auc_pr"),
+        ("Brier", "brier"), ("recall@10%", "recall_at_10pct"),
+    ]
+    for label, rung14, rung28 in o34_bases:
+        for metric_label, key in o34_metrics:
+            v14, v28 = test_point(14, rung14, key), test_point(28, rung28, key)
+            change = (v14 - v28) / v28 * 100 if v28 else float("nan")
+            out.append(f"{label:<26}{metric_label:<16}{v14:>9.4f}{v28:>9.4f}{change:>+9.1f}%")
+        out.append("")
+    out.append(
+        "O3 asks whether day 14 is 'close' to day 28 and O4 whether it is 'substantially worse'. The protocol "
+        "defines neither term, names no metric on which to read them, and fixes no threshold, so the numbers "
+        "above do not resolve into either outcome without a criterion invented here."
+    )
+    out.append(
+        "O3/O4 UNDETERMINED: the timeliness trade-off is quantified above and no verdict is drawn from it."
+    )
     out.append("")
 
-    val_cost28 = frozen["cutoffs"]["28"][per_cutoff[28]["selected_rung"]]["validate_expected_cost"]
+    val_cost28 = frozen["cutoffs"]["28"][sel28]["validate_expected_cost"]
     test_cost28 = cost28
     drift_pct = (test_cost28 - val_cost28) / val_cost28 * 100 if val_cost28 else float("nan")
+    val_base_rate28 = float(stage4[28]["validate_base_rate"])
+    test_base_rate28 = per_cutoff[28]["base_rate"]
+    val_flag_all28 = 1.0 - val_base_rate28
+    test_flag_all28 = 1.0 - test_base_rate28
+    val_metrics28 = {rung: stage4[28]["models"][rung]["metrics"] for rung in ("B3", "M1")}
+
     out.append(
-        f"D=28 selected model validate expected cost = {val_cost28:.4f}, test expected cost = {test_cost28:.4f} "
-        f"({drift_pct:+.1f}%)."
+        f"O5, drift. Validate (2014B) against test (2014J) at D=28, model {sel28}, frozen threshold applied "
+        "unchanged to both. Two readings of the same move are reported side by side; the protocol supplies no "
+        "rule for choosing between them, so neither is presented as the answer."
     )
-    if abs(drift_pct) > 15:
-        out.append("O5 MET: test performance degrades sharply relative to validate. Reported as drift per Section 10.")
-    else:
-        out.append("O5 NOT MET: test performance does not degrade sharply relative to validate; the model transfers to the 2014J holdout reasonably.")
+    out.append("")
+    out.append("Reading 1 — expected cost in levels, which moves with prevalence:")
+    out.append(f"  {'quantity':<38}{'validate':>10}{'test':>10}{'change':>10}{'relative':>11}")
+    for label, v_val, v_test in [
+        ("base rate (non-completion)", val_base_rate28, test_base_rate28),
+        ("flag-everyone expected cost", val_flag_all28, test_flag_all28),
+        (f"{sel28} expected cost at frozen thr", val_cost28, test_cost28),
+    ]:
+        rel = (v_test - v_val) / v_val * 100 if v_val else float("nan")
+        out.append(f"  {label:<38}{v_val:>10.4f}{v_test:>10.4f}{v_test - v_val:>+10.4f}{rel:>+10.1f}%")
+    out.append("")
+    out.append(
+        f"  The model's expected cost rose {test_cost28 - val_cost28:+.4f} ({drift_pct:+.1f}%) while the "
+        f"flag-everyone baseline, which contains no model at all, rose {test_flag_all28 - val_flag_all28:+.4f} "
+        f"over the same move. The base rate fell from {val_base_rate28:.4f} to {test_base_rate28:.4f}: a cohort "
+        "with proportionally more completers offers more students to flag in error, and the flag-everyone cost, "
+        "which is exactly the share of completers, rises by the same amount the base rate falls. Most of the "
+        "change in the level therefore tracks the change in prevalence rather than the model."
+    )
+    out.append("")
+    out.append("Reading 2 — discrimination and calibration, which do not move with prevalence in that way:")
+    out.append(f"  {'metric':<38}{'validate':>10}{'test':>10}{'change':>10}{'relative':>11}")
+    for rung in ("M1", "B3"):
+        for metric_label, key in [("AUC-PR", "auc_pr"), ("Brier", "brier")]:
+            v_val = float(val_metrics28[rung][key])
+            v_test = test_point(28, rung, key)
+            rel = (v_test - v_val) / v_val * 100 if v_val else float("nan")
+            out.append(f"  {rung + ' ' + metric_label:<38}{v_val:>10.4f}{v_test:>10.4f}{v_test - v_val:>+10.4f}{rel:>+10.1f}%")
+    out.append("")
+    out.append(
+        "  AUC-PR is invariant to the threshold and falls on both models; Brier worsens. These are properties "
+        "of the ranking and of the probabilities themselves, not of where the cohort's base rate sits."
+    )
+    out.append("")
+    out.append(
+        "The second reading is evidence of genuine degradation: the model separates students less well on 2014J "
+        "than it did on 2014B, on measures that do not follow the base rate. The first is largely arithmetic: "
+        "the rise in expected cost is mostly the prevalence shift, as the flag-everyone row shows. Section 13 "
+        "declares O5 for 'sharp' degradation but defines no criterion that converts either reading into a "
+        "verdict. The two readings agree that something moved and disagree about how much of it is the model."
+    )
+    out.append(
+        "O5 UNDETERMINED: drift is measured and reported here and under Section 10, and no verdict is drawn "
+        "from it. Per Section 10, nothing is corrected, reweighted or recalibrated in response."
+    )
     out.append("")
 
     overall_cost28 = per_cutoff[28]["rung_results"][per_cutoff[28]["selected_rung"]]["point"]["expected_cost"]
@@ -447,10 +536,9 @@ def main() -> None:
     out.append(
         "Section 8 of the protocol makes slice reporting mandatory but does not define materiality: it fixes "
         "no threshold, no metric and no comparison rule at which a slice gap counts as 'materially worse' for "
-        "the purposes of O6. Nothing in the pre-registered document supplies one. A criterion chosen now, with "
-        "these numbers already in view, would be a criterion selected in knowledge of the result, which is the "
-        "practice this protocol exists to prevent. None is supplied here, and the earlier version of this "
-        "report, which decided O6 against a 15% convention introduced after the fact, is withdrawn."
+        "the purposes of O6. Nothing in the pre-registered document supplies one, and the 15% convention this "
+        "report previously decided O6 against is withdrawn per the note at the head of this section. None is "
+        "supplied in its place."
     )
     out.append(
         "O6 UNDETERMINED: the gaps above are reported as measured. Whether any of them is materially worse in "
