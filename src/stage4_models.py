@@ -59,11 +59,25 @@ def cost_ratio_curve(y_true: np.ndarray, y_prob: np.ndarray):
     return curve
 
 
-def recall_at_budget(y_true: np.ndarray, y_prob: np.ndarray, budget_frac: float) -> float:
+def recall_at_budget(y_true: np.ndarray, y_prob: np.ndarray, budget_frac: float,
+                      rng: np.random.Generator | None = None) -> float:
+    """Ties in y_prob (e.g. a constant-probability model like B0) are broken
+    randomly rather than by argsort's implementation-specific, position-based
+    tie order. Deterministic tie-breaking is what you want for a single
+    point estimate on the original row order, but it silently collapses
+    under a stratified bootstrap: the resample's positive-then-negative
+    block structure interacts with a fixed tie order to produce the same
+    degenerate "top k" selection on every resample. rng defaults to a fresh
+    unseeded Generator; pass a shared seeded Generator for a reproducible
+    sequence across repeated calls (e.g. within a bootstrap loop)."""
     y_true = np.asarray(y_true)
+    y_prob = np.asarray(y_prob)
     n = len(y_true)
     k = max(1, int(round(budget_frac * n)))
-    order = np.argsort(-y_prob)
+    if rng is None:
+        rng = np.random.default_rng()
+    tie_break = rng.random(n)
+    order = np.lexsort((tie_break, -y_prob))
     flagged = np.zeros(n, dtype=int)
     flagged[order[:k]] = 1
     total_pos = int((y_true == 1).sum())
@@ -73,7 +87,8 @@ def recall_at_budget(y_true: np.ndarray, y_prob: np.ndarray, budget_frac: float)
     return tp / total_pos
 
 
-def ranking_metrics(y_true: np.ndarray, y_prob: np.ndarray) -> dict:
+def ranking_metrics(y_true: np.ndarray, y_prob: np.ndarray,
+                     rng: np.random.Generator | None = None) -> dict:
     y_true = np.asarray(y_true)
     if len(np.unique(y_true)) < 2:
         auc_pr = float("nan")
@@ -86,9 +101,9 @@ def ranking_metrics(y_true: np.ndarray, y_prob: np.ndarray) -> dict:
         "auc_pr": auc_pr,
         "auc_roc": auc_roc,
         "brier": brier,
-        "recall_at_5pct": recall_at_budget(y_true, y_prob, 0.05),
-        "recall_at_10pct": recall_at_budget(y_true, y_prob, 0.10),
-        "recall_at_20pct": recall_at_budget(y_true, y_prob, 0.20),
+        "recall_at_5pct": recall_at_budget(y_true, y_prob, 0.05, rng=rng),
+        "recall_at_10pct": recall_at_budget(y_true, y_prob, 0.10, rng=rng),
+        "recall_at_20pct": recall_at_budget(y_true, y_prob, 0.20, rng=rng),
     }
 
 
